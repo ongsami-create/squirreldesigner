@@ -1,0 +1,23 @@
+# GAS backend - 不要推到 GitHub，手动部署到 Apps Script
+*.gs
+GAS_*.gs
+
+# 临时文件和备份
+temp_source*.html
+temp_*.html
+index_backup_*.html
+63_version.html
+logo_base64.txt
+products.json
+
+# 旧的 build 产物
+dist/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.log
+
+# 编辑器
+.vscode/
+.idea/
