@@ -383,6 +383,13 @@
         .deposit-amount { width: 120px; text-align: right; }
         .deposit-row .delete-btn { background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px 8px; }
         .deposit-row .delete-btn:hover { color: #a71d2a; }
+        /* 2026-07-29：定金款项分两个池（50% / 100%） */
+        .deposit-pool-section { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: #fafaf5; }
+        .deposit-pool-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .deposit-pool-total { color: #666; font-size: 12px; }
+        .deposit-pool-section.locked { opacity: 0.7; background: #f5f5f5; }
+        .deposit-row input.locked { background: #f0f0f0; cursor: not-allowed; }
+        .deposit-row .delete-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
         /* Total Section */
         .total-section {
@@ -755,18 +762,43 @@
                         <textarea id="feeRemarks" placeholder="Enter additional remarks..."></textarea>
                     </div>
                     
-                    <!-- Deposit Records -->
+                    <!-- Deposit Records (2026-07-29 拆成 50% / 100% 两个 section) -->
                     <div class="deposit-section">
                         <label class="form-label" style="margin-top:15px;" id="depositLabel">Deposit Records</label>
-                        <div class="deposit-records" id="depositRecordsContainer">
-                            <div class="deposit-row">
-                                <input type="date" class="deposit-date" placeholder="Date">
-                                <input type="text" class="deposit-receipt" placeholder="Receipt No">
-                                <input type="number" class="deposit-amount" placeholder="Amount" min="0" step="0.01">
-                                <button class="delete-btn" onclick="removeDepositRow(this)">🗑️</button>
+
+                        <!-- 定金款项 50（前期 50% 池） -->
+                        <div class="deposit-pool-section" id="depositSection50">
+                            <div class="deposit-pool-header">
+                                <span style="font-weight:600;color:#00B3B8;" id="deposit50Label">定金款项 50 (前期 50%)</span>
+                                <span class="deposit-pool-total" id="depositPool50Total">合计: RM 0.00</span>
                             </div>
+                            <div class="deposit-records" id="depositRecords50Container">
+                                <div class="deposit-row" data-pool="50">
+                                    <input type="date" class="deposit-date" placeholder="Date">
+                                    <input type="text" class="deposit-receipt" placeholder="Receipt No">
+                                    <input type="number" class="deposit-amount" placeholder="Amount" min="0" step="0.01" oninput="updateDepositPoolTotals()">
+                                    <button class="delete-btn" onclick="removeDepositRow(this)">🗑️</button>
+                                </div>
+                            </div>
+                            <button class="add-fee-btn" onclick="addDepositRow('50')">+ Add Deposit (50%)</button>
                         </div>
-                        <button class="add-fee-btn" onclick="addDepositRow()">+ Add Deposit Record</button>
+
+                        <!-- 定金款项 100（后期 100% 池，初始半透明禁用，点了佣金 50 后才激活） -->
+                        <div class="deposit-pool-section" id="depositSection100" style="opacity:0.5;pointer-events:none;">
+                            <div class="deposit-pool-header">
+                                <span style="font-weight:600;color:#6f42c1;" id="deposit100Label">定金款项 100 (后期 100%)</span>
+                                <span class="deposit-pool-total" id="depositPool100Total">合计: RM 0.00</span>
+                            </div>
+                            <div class="deposit-records" id="depositRecords100Container">
+                                <div class="deposit-row" data-pool="100">
+                                    <input type="date" class="deposit-date" placeholder="Date">
+                                    <input type="text" class="deposit-receipt" placeholder="Receipt No">
+                                    <input type="number" class="deposit-amount" placeholder="Amount" min="0" step="0.01" oninput="updateDepositPoolTotals()">
+                                    <button class="delete-btn" onclick="removeDepositRow(this)">🗑️</button>
+                                </div>
+                            </div>
+                            <button class="add-fee-btn" onclick="addDepositRow('100')">+ Add Deposit (100%)</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1450,7 +1482,8 @@
                 history: 'Quote History', noHistory: 'No saved quotes found',
                 addCustomFee: 'Add Custom Fee', disc: 'Disc', craft: 'Craft', foc: 'FOC', spec: 'Spec', adj: 'ADJ',
                 additionalRemarks: 'Additional Remarks',
-                depositRecords: 'Deposit Records', 'remoteDeliveryFee': 'Remote Delivery Fee', 'wasteRemovalFee': 'Waste Removal Fee', 'extraInstallationFee': 'Extra Installation Fee'
+                depositRecords: 'Deposit Records', 'remoteDeliveryFee': 'Remote Delivery Fee', 'wasteRemovalFee': 'Waste Removal Fee', 'extraInstallationFee': 'Extra Installation Fee',
+                depositRecords50: 'Deposit 50% (Front)', depositRecords100: 'Deposit 100% (Rear)'
             },
             zh: {
                 selectArea: '选择区域', selectType: '选择项目',
@@ -1467,7 +1500,8 @@
                 history: '报价历史', noHistory: '没有找到保存的报价',
                 addCustomFee: '添加自定义费用', disc: '折扣', craft: '工艺', foc: '免费', spec: '特殊', adj: '调整',
                 additionalRemarks: '附加备注',
-                depositRecords: '定金款项', remoteDeliveryFee: '偏远地区送货费', wasteRemovalFee: '垃圾清运费', extraInstallationFee: '额外安装费'
+                depositRecords: '定金款项', remoteDeliveryFee: '偏远地区送货费', wasteRemovalFee: '垃圾清运费', extraInstallationFee: '额外安装费',
+                depositRecords50: '定金款项 50（前期）', depositRecords100: '定金款项 100（后期）'
             }
         };
 
@@ -2227,8 +2261,15 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                 document.getElementById('feeWasteAmount').value = '0';
                 document.getElementById('feeRemarks').value = '';
                 document.getElementById('customFeesContainer').innerHTML = '';
-                document.getElementById('depositRecordsContainer').innerHTML = '';
-                addDepositRow();
+                document.getElementById('depositRecords50Container').innerHTML = '';
+                document.getElementById('depositRecords100Container').innerHTML = '';
+                addDepositRow('50');
+                addDepositRow('100');
+                // 新建/重置：100 section 默认半透明禁用
+                setDeposit100SectionActive(false);
+                // 解锁两个池
+                lockDepositInputs(false, '50');
+                lockDepositInputs(false, '100');
                 renderQuote();
                 calculateTotal();
                 editingQuoteId = null;
@@ -2348,48 +2389,84 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
         function removeCustomFee(id) { customFees = customFees.filter(f => f.id !== id); renderCustomFees(); calculateTotal(); }
 
         // Deposit Records Functions
-        function addDepositRow() {
-            const container = document.getElementById('depositRecordsContainer');
+        // 2026-07-29 改：加 pool 参数，区分 50 / 100 池
+        function addDepositRow(pool) {
+            pool = pool || '50';  // 默认 50
+            const containerId = pool === '100' ? 'depositRecords100Container' : 'depositRecords50Container';
+            const container = document.getElementById(containerId);
+            if (!container) return;
             const newRow = document.createElement('div');
             newRow.className = 'deposit-row';
-            // 2026-07-27：每条 deposit 加 createdAt（完整时间戳），backadmin 用它算池子分水岭
+            newRow.dataset.pool = pool;
+            // 2026-07-27：每条 deposit 加 createdAt（完整时间戳），用于审计/排序
             const nowISO = new Date().toISOString();
             newRow.innerHTML = `
                 <input type="date" class="deposit-date" placeholder="Date">
                 <input type="text" class="deposit-receipt" placeholder="Receipt No">
-                <input type="number" class="deposit-amount" placeholder="Amount" min="0" step="0.01">
+                <input type="number" class="deposit-amount" placeholder="Amount" min="0" step="0.01" oninput="updateDepositPoolTotals()">
                 <button class="delete-btn" onclick="removeDepositRow(this)">🗑️</button>
             `;
             newRow.dataset.createdAt = nowISO;
             container.appendChild(newRow);
+            updateDepositPoolTotals();
         }
 
         function removeDepositRow(btn) {
             const row = btn.closest('.deposit-row');
-            const container = document.getElementById('depositRecordsContainer');
+            // 2026-07-29 改：从 row 自身取 pool，找到对应容器
+            const pool = row.dataset.pool || '50';
+            const containerId = pool === '100' ? 'depositRecords100Container' : 'depositRecords50Container';
+            const container = document.getElementById(containerId);
             if (container.children.length > 1) {
                 row.remove();
             } else {
                 // Clear values instead of removing the last row
                 row.querySelectorAll('input').forEach(input => input.value = '');
             }
+            updateDepositPoolTotals();
         }
 
+        // 2026-07-29 改：从两个容器读，每条记录带 pool 字段
         function getDepositRecords() {
-            const rows = document.querySelectorAll('#depositRecordsContainer .deposit-row');
             const deposits = [];
-            rows.forEach(row => {
+            // 50 池
+            const rows50 = document.querySelectorAll('#depositRecords50Container .deposit-row');
+            rows50.forEach(row => {
                 const date = row.querySelector('.deposit-date').value;
                 const receiptNo = row.querySelector('.deposit-receipt').value;
                 const amount = parseFloat(row.querySelector('.deposit-amount').value) || 0;
                 if (date || receiptNo || amount > 0) {
-                    // 2026-07-27：把 createdAt 也带上（行创建时间），backadmin 用它算池子分水岭
                     const createdAt = row.dataset.createdAt || new Date().toISOString();
-                    // 字段名从 receipt 改成 receiptNo，与 backadmin 对齐 (2026-06-15)
-                    deposits.push({ date, receiptNo, amount, createdAt });
+                    deposits.push({ date, receiptNo, amount, pool: '50', createdAt });
+                }
+            });
+            // 100 池
+            const rows100 = document.querySelectorAll('#depositRecords100Container .deposit-row');
+            rows100.forEach(row => {
+                const date = row.querySelector('.deposit-date').value;
+                const receiptNo = row.querySelector('.deposit-receipt').value;
+                const amount = parseFloat(row.querySelector('.deposit-amount').value) || 0;
+                if (date || receiptNo || amount > 0) {
+                    const createdAt = row.dataset.createdAt || new Date().toISOString();
+                    deposits.push({ date, receiptNo, amount, pool: '100', createdAt });
                 }
             });
             return deposits;
+        }
+
+        // 2026-07-29 新增：实时更新两个池的合计显示
+        function updateDepositPoolTotals() {
+            const total50El = document.getElementById('depositPool50Total');
+            const total100El = document.getElementById('depositPool100Total');
+            if (!total50El || !total100El) return;
+            const records = getDepositRecords();
+            let sum50 = 0, sum100 = 0;
+            for (const r of records) {
+                if (r.pool === '100') sum100 += r.amount;
+                else sum50 += r.amount;
+            }
+            total50El.textContent = '合计: RM ' + sum50.toFixed(2);
+            total100El.textContent = '合计: RM ' + sum100.toFixed(2);
         }
 
         function getDepositRecordsHtml(grandTotal) {
@@ -2398,13 +2475,20 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             if (depositRecords.length === 0 || !depositRecords.some(d => d.date || d.receipt || d.amount > 0)) {
                 return '';
             }
+            // 2026-07-29 改：按 pool 拆两个小计，但渲染在一张表里（PDF 不需要拆）
             let totalPaid = 0;
+            let pool50Sum = 0, pool100Sum = 0;
+            depositRecords.forEach(d => {
+                if (d.pool === '100') pool100Sum += (parseFloat(d.amount) || 0);
+                else pool50Sum += (parseFloat(d.amount) || 0);
+            });
             let html = `
                 <div style="margin-top: 20px;">
                     <h4 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">${t.depositRecords}</h4>
-                    <table class="quotation-table" style="width: 70%;">
+                    <table class="quotation-table" style="width: 80%;">
                         <thead>
                             <tr>
+                                <th>Pool</th>
                                 <th>Date</th>
                                 <th>Receipt No</th>
                                 <th>Amount Received</th>
@@ -2414,12 +2498,13 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                         <tbody>
             `;
             depositRecords.forEach(deposit => {
-                // receiptNo 字段，与 backadmin 对齐；兼容旧数据 receipt 字段 (2026-06-15)
                 if (deposit.date || deposit.receiptNo || deposit.receipt || deposit.amount > 0) {
                     totalPaid += deposit.amount;
                     const balanceDue = grandTotal - totalPaid;
+                    const poolLabel = deposit.pool === '100' ? '100%' : '50%';
                     html += `
                         <tr>
+                            <td style="text-align:center;color:${deposit.pool === '100' ? '#6f42c1' : '#00B3B8'};font-weight:600;">${poolLabel}</td>
                             <td>${deposit.date || '-'}</td>
                             <td>${deposit.receiptNo || deposit.receipt || '-'}</td>
                             <td style="text-align: right;">RM ${deposit.amount.toFixed(2)}</td>
@@ -2428,7 +2513,20 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                     `;
                 }
             });
-            html += '</tbody></table></div>';
+            html += `</tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align:right;color:#00B3B8;font-weight:600;">50% 池合计：</td>
+                        <td style="text-align:right;color:#00B3B8;font-weight:600;">RM ${pool50Sum.toFixed(2)}</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="text-align:right;color:#6f42c1;font-weight:600;">100% 池合计：</td>
+                        <td style="text-align:right;color:#6f42c1;font-weight:600;">RM ${pool100Sum.toFixed(2)}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table></div>`;
             return html;
         }
 
@@ -2836,28 +2934,50 @@ function renderHistoryList(searchTerm = '') {
             quoteItems = quote.items || [];
             renderQuote();
             
-            // Load deposit records
+            // Load deposit records (2026-07-29 改：分两个容器渲染)
             // 兼容历史 receipt 字段与新 receiptNo 字段 (2026-06-15)
-            const depositRecords = quote.depositRecords || [{date: '', receiptNo: '', amount: 0}];
-            const container = document.getElementById('depositRecordsContainer');
-            container.innerHTML = '';
+            // 兼容旧数据：没有 pool 字段 → 默认归 50 池
+            const depositRecords = quote.depositRecords || [];
+            const container50 = document.getElementById('depositRecords50Container');
+            const container100 = document.getElementById('depositRecords100Container');
+            container50.innerHTML = '';
+            container100.innerHTML = '';
+            const rows50 = [];
+            const rows100 = [];
             depositRecords.forEach(deposit => {
                 const row = document.createElement('div');
                 row.className = 'deposit-row';
                 const existingReceipt = deposit.receiptNo || deposit.receipt || '';
-                // 2026-07-27：保留已存的 createdAt（每条 deposit 的创建时间），backadmin 用它算池子分水岭
+                // 2026-07-27：保留已存的 createdAt（每条 deposit 的创建时间）
                 row.dataset.createdAt = deposit.createdAt || new Date().toISOString();
+                // 2026-07-29：按 pool 字段分流，老数据默认 50
+                const pool = deposit.pool || '50';
+                row.dataset.pool = pool;
                 row.innerHTML = `
                     <input type="date" class="deposit-date" value="${deposit.date || ''}">
                     <input type="text" class="deposit-receipt" value="${existingReceipt}" placeholder="Receipt No">
-                    <input type="number" class="deposit-amount" value="${deposit.amount || 0}" min="0" step="0.01">
+                    <input type="number" class="deposit-amount" value="${deposit.amount || 0}" min="0" step="0.01" oninput="updateDepositPoolTotals()">
                     <button class="delete-btn" onclick="removeDepositRow(this)">🗑️</button>
                 `;
-                container.appendChild(row);
+                if (pool === '100') {
+                    container100.appendChild(row);
+                    rows100.push(row);
+                } else {
+                    container50.appendChild(row);
+                    rows50.push(row);
+                }
             });
-            if (depositRecords.length === 0) addDepositRow();
-            // 恢复订金锁定状态 (2026-06-22)
-            lockDepositInputs(!!quote.depositLocked);
+            // 如果某个池为空，加一行空的（避免显示空容器）
+            if (rows50.length === 0) addDepositRow('50');
+            if (rows100.length === 0) addDepositRow('100');
+            // 恢复订金锁定状态（2026-06-22，2026-07-29 改：按 commission50/100At 独立锁定）
+            // 50 池锁定 = !!commission50At
+            // 100 池锁定 = !!commission100At
+            lockDepositInputs(!!quote.commission50At, '50');
+            lockDepositInputs(!!quote.commission100At, '100');
+            // 2026-07-29：100 池 section 在 commission50At 未标记前保持半透明禁用
+            setDeposit100SectionActive(!!quote.commission50At);
+            updateDepositPoolTotals();
 
             calculateTotal();
             closeHistoryModal();
@@ -3276,12 +3396,14 @@ function renderHistoryList(searchTerm = '') {
             let depositTableHtml = '';
             if (depositRecords.length > 0 && depositRecords.some(d => d.date || d.receiptNo || d.receipt || d.amount > 0)) {
                 let totalPaid = 0;
+                let pool50Sum = 0, pool100Sum = 0;
                 depositTableHtml = `
                     <div style="margin-top:20px;">
                         <h4 style="font-size:11px;color:#4A4A3D;margin-bottom:8px;">${depositT.depositRecords}</h4>
-                        <table style="width:60%;border-collapse:collapse;">
+                        <table style="width:80%;border-collapse:collapse;">
                             <thead>
                                 <tr style="background:#4A4A3D;color:white;">
+                                    <th style="padding:6px 8px;text-align:left;">Pool</th>
                                     <th style="padding:6px 8px;text-align:left;">Date</th>
                                     <th style="padding:6px 8px;text-align:left;">Receipt No</th>
                                     <th style="padding:6px 8px;text-align:right;">Amount Received</th>
@@ -3293,9 +3415,14 @@ function renderHistoryList(searchTerm = '') {
                 depositRecords.forEach(deposit => {
                     if (deposit.date || deposit.receiptNo || deposit.receipt || deposit.amount > 0) {
                         totalPaid += deposit.amount;
+                        if (deposit.pool === '100') pool100Sum += deposit.amount;
+                        else pool50Sum += deposit.amount;
                         const balanceDue = grandTotal - totalPaid;
+                        const poolLabel = deposit.pool === '100' ? '100%' : '50%';
+                        const poolColor = deposit.pool === '100' ? '#6f42c1' : '#00B3B8';
                         depositTableHtml += `
                             <tr>
+                                <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:center;color:${poolColor};font-weight:600;">${poolLabel}</td>
                                 <td style="padding:5px 8px;border-bottom:1px solid #ddd;">${deposit.date || '-'}</td>
                                 <td style="padding:5px 8px;border-bottom:1px solid #ddd;">${deposit.receiptNo || deposit.receipt || '-'}</td>
                                 <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:right;">RM ${deposit.amount.toFixed(2)}</td>
@@ -3306,6 +3433,10 @@ function renderHistoryList(searchTerm = '') {
                 });
                 depositTableHtml += `
                             </tbody>
+                            <tfoot>
+                                <tr><td colspan="3" style="padding:5px 8px;text-align:right;color:#00B3B8;font-weight:600;">50% Pool Subtotal:</td><td style="padding:5px 8px;text-align:right;color:#00B3B8;font-weight:600;">RM ${pool50Sum.toFixed(2)}</td><td></td></tr>
+                                <tr><td colspan="3" style="padding:5px 8px;text-align:right;color:#6f42c1;font-weight:600;">100% Pool Subtotal:</td><td style="padding:5px 8px;text-align:right;color:#6f42c1;font-weight:600;">RM ${pool100Sum.toFixed(2)}</td><td></td></tr>
+                            </tfoot>
                         </table>
                     </div>
                 `;
@@ -4025,19 +4156,21 @@ function renderHistoryList(searchTerm = '') {
                 }
 
                 // 检查定金加总是否 >= 总销售 40% (2026-06-16)
+                // 2026-07-29 改：只看 50 池（不再看全池），跟"输入即归属"对齐
                 // ⚠️ 必须从 quote.depositRecords 读取，而不是当前界面 (2026-06-16)
                 // ⚠️ 分母用 quote.total（总销售），不用 grandTotal（含折扣） (2026-06-24)
-                const depositTotal = (quote.depositRecords || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+                const records = quote.depositRecords || [];
+                const pool50Total = records.filter(d => d.pool !== '100').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
                 const baseTotal = parseFloat(quote.total) || calculateGrandTotal(quote); // 总销售 (2026-06-24)
-                const percent = baseTotal > 0 ? (depositTotal / baseTotal) * 100 : 0;
+                const percent = baseTotal > 0 ? (pool50Total / baseTotal) * 100 : 0;
 
                 if (percent < 40) {
-                    alert('⚠️ 定金不足 40%，不能点击佣金 50\n\n当前定金：RM ' + depositTotal.toFixed(2) + '\n总销售：RM ' + baseTotal.toFixed(2) + '\n当前比例：' + percent.toFixed(1) + '%\n\n请先收取至少 40% 定金再点击。');
+                    alert('⚠️ 定金款项 50 不足 40%，不能点击佣金 50\n\n当前 50 池定金：RM ' + pool50Total.toFixed(2) + '\n总销售：RM ' + baseTotal.toFixed(2) + '\n当前比例：' + percent.toFixed(1) + '%\n\n请先在"定金款项 50"section 收取至少 40% 定金再点击。');
                     return;
                 }
 
                 // 定金 >= 40% → 二次确认
-                if (!confirm('✅ 定金已达 ' + percent.toFixed(1) + '%（≥40%）\n\n定金：RM ' + depositTotal.toFixed(2) + ' / 总销售：RM ' + baseTotal.toFixed(2) + '\n\n⚠️ 确认后将锁定订金款项，不能再修改。\n\n确定要标记佣金 50 吗？')) {
+                if (!confirm('✅ 定金款项 50 已达 ' + percent.toFixed(1) + '%（≥40%）\n\n50 池定金：RM ' + pool50Total.toFixed(2) + ' / 总销售：RM ' + baseTotal.toFixed(2) + '\n\n⚠️ 确认后将：\n  ① 锁定"定金款项 50"section（不能再修改）\n  ② 激活"定金款项 100"section（可输入后期定金）\n  ③ 解锁后台佣金计算 %50 输入栏\n\n确定要标记佣金 50 吗？')) {
                     return;
                 }
 
@@ -4045,7 +4178,8 @@ function renderHistoryList(searchTerm = '') {
                 // 本地立即标记（乐观更新）
                 quote.commission50Marked = true;
                 quote.commission50At = now;
-                quote.depositLocked = true; // 锁定定金 (2026-06-22)
+                // 2026-07-29 改：depositLocked 改成从 commission50At 派生，这里仍设 depositLocked=true 兼容老数据
+                quote.depositLocked = true; // 锁定 50 池（兼容老数据，backadmin 仍读这个字段）
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
                 const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
                 if (idx >= 0) {
@@ -4057,8 +4191,9 @@ function renderHistoryList(searchTerm = '') {
                 quoteHistory = history;
                 renderHistoryList();
 
-                // ⚠️ 立即锁定当前界面 input + 删除键 (2026-06-24)
-                lockDepositInputs(true);
+                // ⚠️ 立即锁定 50 池 + 激活 100 section (2026-07-29)
+                lockDepositInputs(true, '50');
+                setDeposit100SectionActive(true);
 
                 // 同步到 GAS 云端 (2026-06-22)
                 if (currentUser) {
@@ -4093,8 +4228,9 @@ function renderHistoryList(searchTerm = '') {
                     return;
                 }
 
-                // 检查定金比例 (2026-06-22 / 2026-06-24 用 quote.total)
-                const depositTotal = (quote.depositRecords || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+                // 检查定金比例（2026-07-29 改：50+100 池加总）
+                const records = quote.depositRecords || [];
+                const depositTotal = records.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
                 const baseTotal = parseFloat(quote.total) || calculateGrandTotal(quote); // 总销售 (2026-06-24)
                 const percent = baseTotal > 0 ? (depositTotal / baseTotal) * 100 : 0;
                 const balance = Math.max(0, baseTotal - depositTotal);
@@ -4114,6 +4250,7 @@ function renderHistoryList(searchTerm = '') {
                 // 本地立即标记（乐观更新）
                 quote.commission100Marked = true;
                 quote.commission100At = now;
+                // 2026-07-29：100 池锁定（不直接用 depositLocked，已被 commission50At 锁定过）
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
                 const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
                 if (idx >= 0) {
@@ -4124,6 +4261,9 @@ function renderHistoryList(searchTerm = '') {
                 localStorage.setItem('quoteHistory', JSON.stringify(history));
                 quoteHistory = history;
                 renderHistoryList();
+
+                // 锁定 100 池（2026-07-29）
+                lockDepositInputs(true, '100');
 
                 // 同步到 GAS 云端 (2026-06-22)
                 if (currentUser) {
@@ -4139,15 +4279,19 @@ function renderHistoryList(searchTerm = '') {
         }
 
         // 锁定/解锁订金款项 input (2026-06-22)
-        function lockDepositInputs(locked) {
-            const rows = document.querySelectorAll('#depositRecordsContainer .deposit-row');
+        // 2026-07-29 改：按 pool 锁定（不再用单一 depositLocked 标志）
+        // pool='50' → 锁定 50 池；pool='100' → 锁定 100 池
+        // 同时控制 100 池 section 整体的 enable/disable（点了 commission50 才解锁 100 section）
+        function lockDepositInputs(locked, pool) {
+            pool = pool || '50';
+            const containerId = pool === '100' ? 'depositRecords100Container' : 'depositRecords50Container';
+            const sectionId = pool === '100' ? 'depositSection100' : 'depositSection50';
+            const rows = document.querySelectorAll('#' + containerId + ' .deposit-row');
             rows.forEach(row => {
-                // 锁定 input (2026-06-22)
                 row.querySelectorAll('input').forEach(inp => {
                     inp.disabled = locked;
                     inp.classList.toggle('locked', locked);
                 });
-                // 锁定每行的 🗑️ 删除按钮 (2026-06-24)
                 const delBtn = row.querySelector('.delete-btn');
                 if (delBtn) {
                     delBtn.disabled = locked;
@@ -4156,6 +4300,34 @@ function renderHistoryList(searchTerm = '') {
                     delBtn.title = locked ? '已锁定' : '';
                 }
             });
+            // 控制整个 section 的可点性（包括添加按钮）
+            const section = document.getElementById(sectionId);
+            if (section) {
+                if (locked) {
+                    section.classList.add('locked');
+                } else {
+                    section.classList.remove('locked');
+                }
+            }
+            const addBtn = section ? section.querySelector('.add-fee-btn') : null;
+            if (addBtn) {
+                addBtn.disabled = locked;
+                addBtn.style.opacity = locked ? '0.3' : '';
+                addBtn.style.cursor = locked ? 'not-allowed' : 'pointer';
+            }
+        }
+
+        // 2026-07-29 新增：单独控制 100 section 是否激活（需要 commission50 已标记）
+        function setDeposit100SectionActive(active) {
+            const section = document.getElementById('depositSection100');
+            if (!section) return;
+            if (active) {
+                section.style.opacity = '1';
+                section.style.pointerEvents = 'auto';
+            } else {
+                section.style.opacity = '0.5';
+                section.style.pointerEvents = 'none';
+            }
         }
 
         // 辅助：从 quote 数据计算 grandTotal (2026-06-16)
