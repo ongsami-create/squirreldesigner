@@ -4395,11 +4395,11 @@ function renderHistoryList(searchTerm = '') {
                 const projNo = quote.projNo || id;
 
                 const now = new Date().toISOString();
-                // Update local quote status
-                quote.status = 'completed';
+                // ✅ 2026-08-06 改：下单 ≠ 完成
+                //   - 只设 orderedAt / orderedMarked / lockedCustomer（"下单"相关标志）
+                //   - 不再设 status='completed'（"完成"由 backadmin 的「完成」按钮控制）
                 quote.orderedMarked = true; // 标记下单徽章 (2026-06-16)
                 quote.lockedCustomer = true; // 锁定客户信息 (2026-06-16)
-                quote.completedAt = now;
                 quote.orderedAt = now; // 下单时间戳 (2026-06-22，独立字段不复用)
 
                 // Save to cloud
