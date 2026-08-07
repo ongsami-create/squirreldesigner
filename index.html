@@ -3801,7 +3801,11 @@ function renderHistoryList(searchTerm = '') {
                     ...quoteData,
                     projNo: savedProjNo, // Force use of locked projNo
                     lastSynced: new Date().toISOString(),
-                    cloudQuoteId: savedProjNo || 'QUOTE_' + Date.now()
+                    cloudQuoteId: savedProjNo || 'QUOTE_' + Date.now(),
+                    // ✅ 2026-08-07 改：加 createdBy 字段（用户登录身份）
+                    //   之前 Squirrel Designer 端 saveQuote 没存 createdBy，导致 backadmin 端
+                    //   排查跨用户错位时 salesperson + displayName 缺失，新建的 quote createdBy=空
+                    createdBy: currentUser.username
                 };
                 
                 const projNoToSave = savedProjNo || 'QUOTE_' + Date.now();
