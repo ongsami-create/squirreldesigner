@@ -2082,6 +2082,16 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                                     const unitLabel = currentUnit === 'chi' ? 'RM/FT' : 'RM/MM';
                                     const hasAdj = item.adjEnabled && item.adj && parseFloat(item.adj) !== 0;
                                     const unitPriceClass = hasAdj ? 'style="color:green;font-weight:bold;"' : '';
+                                    // ✅ 2026-08-12 修正：Value 字段按 currentUnit 转换显示
+                                    // item.value 内部按 m²/长度存 (标准化)。
+                                    // ✅ 重要：m → chi 长度是 × 3 (1m = 3chi)，m² → chi² 是 × 9
+                                    // 之前写反了 ÷ 3 / ÷ 9（那是 chi → m 或 单价方向），导致 w=12 chi 显示成 1.33
+                                    // ✅ 加 item.algorithm 防御：老 quote 的 item 可能没 algorithm 字段，避免 renderQuote throw
+                                    let displayValue = item.value;
+                                    if (currentUnit === 'chi' && item.algorithm) {
+                                        if (item.algorithm.includes('Per LM')) displayValue = item.value * 3;
+                                        else if (item.algorithm.includes('Per SQM')) displayValue = item.value * 9;
+                                    }
                                     return `
                                         <tr>
                                             <td>${((currentLang === "zh" && item.itemBZh) ? item.itemBZh : item.itemB)}</td>
@@ -2094,7 +2104,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                                                     <input type="number" value="${item.d}" step="0.01" min="0" placeholder="D" onchange="updateDimension(${realIdx}, 'd', this.value)">
                                                 </div>
                                             </td>
-                                            <td class="text-right">${item.value.toFixed(2)}</td>
+                                            <td class="text-right">${displayValue.toFixed(2)}</td>
                                             <td><input type="number" value="${item.qty}" min="1" onchange="updateQty(${realIdx}, this.value)"></td>
                                             <td class="text-right" ${unitPriceClass || ''}>${unitLabel} ${displayUnitPrice}${hasAdj ? ' <span style="font-size:9px;color:green;">(+' + adjPerUnit.toFixed(2) + ')</span>' : ''}</td>
                                             <td class="text-right ${item.isSpecialPrice ? 'special-price' : ''} ${item.specExceed ? 'spec-exceed' : ''}" ${item.specExceed ? 'style="color:red;font-weight:bold;"' : ''}>RM ${item.total.toFixed(2)}${item.costPrice && item.total > 0 ? ' (' + (((item.total - item.costPrice * item.value * item.qty) / item.total) * 100).toFixed(1) + '%)' : ''}</td>
@@ -2189,10 +2199,13 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
         function recalculateItem(index) {
             const item = quoteItems[index];
             let w = item.w, h = item.h, d = item.d;
-            if (currentUnit === 'ft') { w = w * 304.8; h = h * 304.8; d = d * 304.8; }
+            // ✅ 2026-08-12 修：原代码 'ft' (英制 ft = 304.8mm) 是 typo，应该是 'chi' (市尺 = 333.33mm)
+            // 1 chi = 1000/3 mm ≈ 333.33mm。chi 模式要把 w/h/d 转成 mm 再算 value
+            if (currentUnit === 'chi') { w = w * (1000 / 3); h = h * (1000 / 3); d = d * (1000 / 3); }
             let value = 0;
-            if (item.algorithm.includes('Per LM')) value = w * 0.001;
-            else if (item.algorithm.includes('Per SQM')) value = w * h * 0.000001;
+            // ✅ 加 item.algorithm 防御：老 quote 的 item 可能没 algorithm 字段
+            if (item.algorithm && item.algorithm.includes('Per LM')) value = w * 0.001;
+            else if (item.algorithm && item.algorithm.includes('Per SQM')) value = w * h * 0.000001;
             else value = 1;
             item.value = value;
             item.total = calculateItemTotal(item);
@@ -2539,7 +2552,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             const quote = {
                 id: editingQuoteId || Date.now(),
                 date: document.getElementById('quoteDate').value,
-                currentUnit: currentUnit,  // 保存当前单位 (mm/chi/ft)
+                currentUnit: currentUnit,  // 保存当前单位 (mm/chi)
                 customerName: customerName,
                 customerIC: document.getElementById('customerIC').value,
                 customerContact: document.getElementById('customerContact').value,
@@ -3184,10 +3197,19 @@ function renderHistoryList(searchTerm = '') {
                 const areaSubtotal = items.reduce((sum, item) => sum + item.total, 0);
                 
                 // Area header
-                data.push([no, area, items[0].description || '', '', '', 
-                    items[0].w || '', items[0].h || '', items[0].d || '',
-                    items[0].value.toFixed(3) || '', items[0].unitPrice || '', items[0].total.toFixed(2) || '']);
-                
+                // ✅ 2026-08-12 修正：value 和 unit price 按 currentUnit 转换 (跟 UI 同步)
+                const _first = items[0];
+                let _firstValue = _first.value;
+                let _firstUnitPrice = _first.unitPrice;
+                if (currentUnit === 'chi') {
+                    // ✅ 2026-08-12 修正：value m → chi 是 × 3 / × 9
+                    if (_first.algorithm && _first.algorithm.includes('Per LM')) { _firstValue = _first.value * 3; _firstUnitPrice = _first.unitPrice / 3; }
+                    else if (_first.algorithm && _first.algorithm.includes('Per SQM')) { _firstValue = _first.value * 9; _firstUnitPrice = _first.unitPrice / 9; }
+                }
+                data.push([no, area, _first.description || '', '', '',
+                    _first.w || '', _first.h || '', _first.d || '',
+                    _firstValue.toFixed(3), _firstUnitPrice.toFixed(2), _first.total.toFixed(2) || '']);
+
                 // Additional items in same area
                 for (let i = 1; i < items.length; i++) {
                     const item = items[i];
@@ -3196,10 +3218,19 @@ function renderHistoryList(searchTerm = '') {
                     if (item.description) descParts.push(item.description);
                     if (item.remarks) descParts.push(item.remarks);
                     const desc = descParts.join(' | ') || '';
-                    
-                    data.push(['', '', desc, '', '', 
+
+                    // ✅ 2026-08-12 修正：value 和 unit price 按 currentUnit 转换
+                    let _v = item.value;
+                    let _p = item.unitPrice;
+                    if (currentUnit === 'chi') {
+                        // ✅ 2026-08-12 修正：value 转换方向 m → chi 是 × 3 / × 9 (不是 ÷)
+                        if (item.algorithm && item.algorithm.includes('Per LM')) { _v = item.value * 3; _p = item.unitPrice / 3; }
+                        else if (item.algorithm && item.algorithm.includes('Per SQM')) { _v = item.value * 9; _p = item.unitPrice / 9; }
+                    }
+
+                    data.push(['', '', desc, '', '',
                         item.w || '', item.h || '', item.d || '',
-                        item.value.toFixed(3) || '', item.unitPrice || '', item.total.toFixed(2) || '']);
+                        _v.toFixed(3), _p.toFixed(2), item.total.toFixed(2) || '']);
                 }
                 
                 no++;
@@ -3801,7 +3832,11 @@ function renderHistoryList(searchTerm = '') {
                     ...quoteData,
                     projNo: savedProjNo, // Force use of locked projNo
                     lastSynced: new Date().toISOString(),
-                    cloudQuoteId: savedProjNo || 'QUOTE_' + Date.now()
+                    cloudQuoteId: savedProjNo || 'QUOTE_' + Date.now(),
+                    // ✅ 2026-08-07 改：加 createdBy 字段（用户登录身份）
+                    //   之前 Squirrel Designer 端 saveQuote 没存 createdBy，导致 backadmin 端
+                    //   排查跨用户错位时 salesperson + displayName 缺失，新建的 quote createdBy=空
+                    createdBy: currentUser.username
                 };
                 
                 const projNoToSave = savedProjNo || 'QUOTE_' + Date.now();
@@ -4395,11 +4430,11 @@ function renderHistoryList(searchTerm = '') {
                 const projNo = quote.projNo || id;
 
                 const now = new Date().toISOString();
-                // Update local quote status
-                quote.status = 'completed';
+                // ✅ 2026-08-06 改：下单 ≠ 完成
+                //   - 只设 orderedAt / orderedMarked / lockedCustomer（"下单"相关标志）
+                //   - 不再设 status='completed'（"完成"由 backadmin 的「完成」按钮控制）
                 quote.orderedMarked = true; // 标记下单徽章 (2026-06-16)
                 quote.lockedCustomer = true; // 锁定客户信息 (2026-06-16)
-                quote.completedAt = now;
                 quote.orderedAt = now; // 下单时间戳 (2026-06-22，独立字段不复用)
 
                 // Save to cloud
