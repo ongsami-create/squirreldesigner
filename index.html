@@ -2866,33 +2866,33 @@ function renderHistoryList(searchTerm = '') {
         async function loadQuote(id) {
             // 首先加载用户列表
             await loadUserList();
-            
-            // Try to find in local history first
-            let quote = quoteHistory.find(q => q.id === id);
-            
-            // If not found locally or missing items, try to load from cloud
-            if (!quote || !quote.items || quote.items.length === 0) {
-                if (currentUser) {
-                    try {
-                        // Try to load full quote from cloud
-                        const cloudQuote = await loadFullQuoteFromCloud(id);
-                        if (cloudQuote) {
-                            quote = cloudQuote;
-                            // Update local history with cloud data
-                            const idx = quoteHistory.findIndex(q => q.id === id);
-                            if (idx >= 0) {
-                                quoteHistory[idx] = quote;
-                            } else {
-                                quoteHistory.unshift(quote);
-                            }
-                            localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
+
+            // ✅ 2026-08-12 改：总是从 cloud 拿完整 quote（getQuote 返回整个 JSON，包括 currentUnit）
+            // 原因：getQuoteList 字段不全（缺 currentUnit），从 quoteHistory 找会丢 currentUnit
+            // cloud 失败才 fallback 到 local
+            let quote = null;
+            if (currentUser) {
+                try {
+                    quote = await loadFullQuoteFromCloud(id);
+                    if (quote) {
+                        // Update local history with cloud data (this cloud quote has full fields)
+                        const idx = quoteHistory.findIndex(q => q.id === id);
+                        if (idx >= 0) {
+                            quoteHistory[idx] = quote;
+                        } else {
+                            quoteHistory.unshift(quote);
                         }
-                    } catch (e) {
-                        console.error('Failed to load from cloud:', e);
+                        localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
                     }
+                } catch (e) {
+                    console.error('Failed to load from cloud:', e);
                 }
             }
-            
+            // Fallback to local only if cloud failed
+            if (!quote) {
+                quote = quoteHistory.find(q => q.id === id);
+            }
+
             if (!quote) { alert('Quote not found'); return; }
             
             // 数据迁移：确保旧报价数据也有这三个字段
