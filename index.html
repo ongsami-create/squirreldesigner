@@ -2087,10 +2087,11 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                                     // ✅ 重要：m → chi 长度是 × 3 (1m = 3chi)，m² → chi² 是 × 9
                                     // 之前写反了 ÷ 3 / ÷ 9（那是 chi → m 或 单价方向），导致 w=12 chi 显示成 1.33
                                     // ✅ 加 item.algorithm 防御：老 quote 的 item 可能没 algorithm 字段，避免 renderQuote throw
-                                    let displayValue = item.value;
+                                    // ✅ 2026-08-12 加：item.value null/NaN 防御 (cloud 拉的 quote 偶尔没 value 字段)
+                                    let displayValue = (item.value != null && !isNaN(item.value)) ? item.value : 0;
                                     if (currentUnit === 'chi' && item.algorithm) {
-                                        if (item.algorithm.includes('Per LM')) displayValue = item.value * 3;
-                                        else if (item.algorithm.includes('Per SQM')) displayValue = item.value * 9;
+                                        if (item.algorithm.includes('Per LM')) displayValue = displayValue * 3;
+                                        else if (item.algorithm.includes('Per SQM')) displayValue = displayValue * 9;
                                     }
                                     return `
                                         <tr>
@@ -2894,6 +2895,20 @@ function renderHistoryList(searchTerm = '') {
             }
 
             if (!quote) { alert('Quote not found'); return; }
+
+            // ✅ 2026-08-12 加：确保 items 都有 value 字段 (cloud quote 偶尔没 value，触发 renderQuote throw)
+            // 对每个 item，如果 value 缺失或 NaN，调 calculateItemTotal 算 (这会设 item.value 和 item.total)
+            if (quote.items && Array.isArray(quote.items)) {
+                quote.items.forEach((it) => {
+                    if (it.value == null || isNaN(it.value) || !it.algorithm) {
+                        try {
+                            calculateItemTotal(it);
+                        } catch (e) {
+                            console.error('Failed to ensure item value:', e);
+                        }
+                    }
+                });
+            }
             
             // 数据迁移：确保旧报价数据也有这三个字段
             if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
