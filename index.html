@@ -57,6 +57,9 @@
         .sync-btn { background: transparent; border: 1px solid rgba(255,255,255,0.5); }
         .sync-btn:hover { background: rgba(255,255,255,0.1); }
         .sync-status { font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 5px; white-space: nowrap; }
+        .sync-status.sync-pending { color: #ffd700; }
+        .sync-status.sync-success { color: #90ee90; }
+        .sync-status.sync-error { color: #ff8a80; }
 
         .header .btn-secondary {
             background: transparent;
@@ -2617,12 +2620,26 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                 });
             }
 
-            // FIX: Always save to cloud FIRST (before any local return)
-            const cloudResult = await saveQuoteToCloud(quote);
+            // ✅ 2026-08-13 优化 P1：cloud 保存改成后台同步 (不再 await 阻塞 UI)
+            // 之前 await saveQuoteToCloud 要 5-10 秒 (GAS 冷启动)，现在 UI 立即反馈
+            const cloudResultPromise = saveQuoteToCloud(quote);
+            cloudResultPromise.then(r => {
+                if (r && r.success) {
+                    console.log('Cloud save OK:', projNo);
+                    updateSyncStatus('已同步 ☁️', 'success');
+                    lockProjNo();
+                } else {
+                    console.warn('Cloud save failed:', r);
+                    updateSyncStatus('同步失败 ⚠️ (本地已保存)', 'error');
+                }
+            }).catch(e => {
+                console.error('Cloud save error:', e);
+                updateSyncStatus('同步失败 ⚠️ (本地已保存)', 'error');
+            });
 
             // FIX: Auto-overwrite if Proj No matches only
             if (projNo) {
-                const existingIndex = history.findIndex(h => 
+                const existingIndex = history.findIndex(h =>
                     (h.projNo || '') === (projNo || '')
                 );
                 if (existingIndex >= 0) {
@@ -2631,7 +2648,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                     localStorage.setItem('quoteHistory', JSON.stringify(history));
                     loadHistory();
                     editingQuoteId = quote.id;
-                    alert('Quote updated successfully!');
+                    alert('Quote updated successfully! (cloud sync in background)');
                     return;
                 }
             }
@@ -2649,12 +2666,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             loadHistory();
             editingQuoteId = quote.id;
 
-            // Lock projNo after cloud save (if successful)
-            if (cloudResult && cloudResult.success) {
-                lockProjNo();
-            }
-
-            alert('Quote saved successfully!');
+            alert('Quote saved successfully! (cloud sync in background)');
         }
         
         // Delete quote from history
@@ -2738,20 +2750,34 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             return [];
         }
         
-        async function loadFullQuoteFromCloud(id) {
+        async function loadFullQuoteFromCloud(idOrProjNo) {
             if (!currentUser) return null;
             try {
-                // Find the quote in cloud history first to get projNo
+                // ✅ 2026-08-13 优化 P2：cache 命中时 1 次 API
+                // 之前永远调 2 次 (getQuoteList 找 projNo + getQuote 拿完整)
+                // 现在先从 localStorage 找 projNo，命中直接调 getQuote
+                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
+                if (cached && cached.projNo) {
+                    const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(cached.projNo));
+                    const fullResult = await fullResponse.json();
+                    if (fullResult.success && fullResult.quote) {
+                        const quote = fullResult.quote;
+                        if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
+                        if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
+                        if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
+                        return quote;
+                    }
+                }
+
+                // Fallback：cache miss 调 2 次 (getQuoteList + getQuote)
                 const response = await fetch(GAS_URL + '?action=getQuoteList&username=' + encodeURIComponent(currentUser.username));
                 const result = await response.json();
                 if (result.success && result.quotes) {
-                    const cloudQuote = result.quotes.find(q => q.id == id || q.projNo == id);
+                    const cloudQuote = result.quotes.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
                     if (cloudQuote && cloudQuote.projNo) {
-                        // Now load the full quote
                         const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(cloudQuote.projNo));
                         const fullResult = await fullResponse.json();
                         if (fullResult.success && fullResult.quote) {
-                            // 数据迁移：确保旧报价数据也有这三个字段
                             const quote = fullResult.quote;
                             if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
                             if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
@@ -3833,6 +3859,9 @@ function renderHistoryList(searchTerm = '') {
             document.getElementById('mainContent').style.display = 'none';
         }
         
+        // ✅ 2026-08-13 优化 P1：同步状态显示 (合并到下面的 updateSyncStatus)
+        // (原本在这里加，但为了避免和 line 3968 的同名函数重复定义，删掉这版)
+
         async function saveQuoteToCloud(quoteData) {
             if (!currentUser) {
                 console.log('Not logged in, skipping cloud save');
@@ -3925,9 +3954,20 @@ function renderHistoryList(searchTerm = '') {
             return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
         }
         
-        function updateSyncStatus(text) {
+        function updateSyncStatus(text, type) {
             const syncStatus = document.getElementById('syncStatus');
+            if (!syncStatus) return;
             syncStatus.textContent = text;
+            syncStatus.className = 'sync-status';
+            if (type === 'success') syncStatus.classList.add('sync-success');
+            else if (type === 'error') syncStatus.classList.add('sync-error');
+            else if (type === 'pending') syncStatus.classList.add('sync-pending');
+            // 成功/失败 5 秒后清空
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    if (syncStatus.textContent === text) syncStatus.textContent = '';
+                }, 5000);
+            }
         }
         
         function manualSync() {
