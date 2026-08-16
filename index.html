@@ -96,29 +96,30 @@ body {
     right: 0;
     z-index: 1000;
     border-bottom: 0.5px solid var(--glass-border);
-    height: 56px;
+    height: 80px;
     box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.04);
 }
 
 .header-left { display: flex; align-items: center; gap: 12px; }
 .logo {
-    height: 36px;
+    height: 70px;
     background: transparent;
     border-radius: var(--radius-md);
-    padding: 2px 8px;
+    padding: 4px 12px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     transition: opacity 0.15s ease;
 }
 .logo:hover { opacity: 0.85; }
-.logo img { max-height: 100%; max-width: 140px; }
+.logo img { max-height: 100%; max-width: 240px; }
 .logo-text {
     color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
     letter-spacing: -0.01em;
+    opacity: 0.85;
 }
 .header-right { display: flex; gap: 8px; align-items: center; }
 
@@ -268,7 +269,7 @@ body {
 .unit-btn { min-width: 56px; }
 
 /* ===== Main layout ===== */
-.main-container { display: flex; margin-top: 56px; min-height: calc(100vh - 56px); }
+.main-container { display: flex; margin-top: 80px; min-height: calc(100vh - 80px); }
 
 /* Left Panel - macOS translucent sidebar */
 .left-panel {
@@ -278,7 +279,7 @@ body {
     backdrop-filter: var(--glass-blur);
     border-right: 0.5px solid var(--glass-border);
     position: fixed;
-    top: 56px;
+    top: 80px;
     left: 0;
     bottom: 0;
     overflow-y: auto;
