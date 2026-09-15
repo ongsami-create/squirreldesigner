@@ -8,7 +8,9 @@ temp_*.html
 index_backup_*.html
 63_version.html
 logo_base64.txt
-products.json
+# ✅ 2026-09-15 改：products.json 现在推到 GitHub 作为本地 fallback
+# （GAS getProducts 可能 hang/404，本地副本保证前端不挂）
+# 注意：源真身在 Drive `Squirrel Designer/admin/products.json`，本地只读副本会略陈旧
 
 # 旧的 build 产物
 dist/
