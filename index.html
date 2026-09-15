@@ -3079,10 +3079,32 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
         
         async function loadFullQuoteFromCloud(idOrProjNo) {
             if (!currentUser) return null;
+
+            // ✅ 2026-09-15：第三层兜底 - localStorage cache (key: quote_full_<projNo>)
+            // 先尝试从缓存读，避免 GAS 抽风时拿不到 quote
+            try {
+                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
+                const projNo = cached ? cached.projNo : idOrProjNo;
+                if (projNo) {
+                    const localCacheKey = `quote_full_${currentUser.username}_${projNo}`;
+                    const localCache = localStorage.getItem(localCacheKey);
+                    if (localCache) {
+                        try {
+                            const parsedQuote = JSON.parse(localCache);
+                            // 如果 cache 还新鲜（<24h），优先使用
+                            const cacheTime = localStorage.getItem(localCacheKey + '_time');
+                            const ageMs = cacheTime ? Date.now() - parseInt(cacheTime, 10) : Infinity;
+                            if (ageMs < 24 * 60 * 60 * 1000) {
+                                console.log(`Using local quote cache for ${projNo} (age: ${Math.round(ageMs / 60000)}min)`);
+                                return parsedQuote;
+                            }
+                        } catch (e) {}
+                    }
+                }
+            } catch (e) {}
+
             try {
                 // ✅ 2026-08-13 优化 P2：cache 命中时 1 次 API
-                // 之前永远调 2 次 (getQuoteList 找 projNo + getQuote 拿完整)
-                // 现在先从 localStorage 找 projNo，命中直接调 getQuote
                 const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
                 if (cached && cached.projNo) {
                     const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(cached.projNo));
@@ -3092,6 +3114,12 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                         if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
                         if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
                         if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
+                        // ✅ 2026-09-15：成功加载后写 localStorage 缓存
+                        try {
+                            const key = `quote_full_${currentUser.username}_${cached.projNo}`;
+                            localStorage.setItem(key, JSON.stringify(quote));
+                            localStorage.setItem(key + '_time', Date.now().toString());
+                        } catch (e) {}
                         return quote;
                     }
                 }
@@ -3109,6 +3137,12 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                             if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
                             if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
                             if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
+                            // 写缓存
+                            try {
+                                const key = `quote_full_${currentUser.username}_${cloudQuote.projNo}`;
+                                localStorage.setItem(key, JSON.stringify(quote));
+                                localStorage.setItem(key + '_time', Date.now().toString());
+                            } catch (e) {}
                             return quote;
                         }
                     }
@@ -3116,6 +3150,19 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             } catch (error) {
                 console.error('Load full quote from cloud error:', error);
             }
+            // ✅ 2026-09-15：所有 GAS 路径都失败，再尝试一次 localStorage（无论新旧）
+            try {
+                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
+                const projNo = cached ? cached.projNo : idOrProjNo;
+                if (projNo) {
+                    const localCacheKey = `quote_full_${currentUser.username}_${projNo}`;
+                    const localCache = localStorage.getItem(localCacheKey);
+                    if (localCache) {
+                        console.warn(`GAS failed but found local cache for ${projNo}`);
+                        return JSON.parse(localCache);
+                    }
+                }
+            } catch (e) {}
             return null;
         }
 function renderHistoryList(searchTerm = '') {
@@ -4002,7 +4049,26 @@ function renderHistoryList(searchTerm = '') {
         
         function checkAuth() {
             const savedUser = localStorage.getItem('squirrel_user');
+            const savedLoginTime = localStorage.getItem('squirrel_user_loginTime');
+            // ✅ 2026-09-15：24 小时未活动自动 logout (登录时间戳 vs 当前时间)
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            if (savedUser && savedLoginTime) {
+                const ageMs = Date.now() - parseInt(savedLoginTime, 10);
+                if (ageMs > TWENTY_FOUR_HOURS) {
+                    console.warn('Session expired (>24h), logging out');
+                    localStorage.removeItem('squirrel_user');
+                    localStorage.removeItem('squirrel_user_loginTime');
+                    alert('登录已过期 (24小时)，请重新登录\nSession expired (24h). Please login again.');
+                    showLoginModal();
+                    return false;
+                }
+                currentUser = JSON.parse(savedUser);
+                showMainContent();
+                return true;
+            }
             if (savedUser) {
+                // 兼容旧数据：没存 loginTime 时当成现在登录
+                localStorage.setItem('squirrel_user_loginTime', Date.now().toString());
                 currentUser = JSON.parse(savedUser);
                 showMainContent();
                 return true;
@@ -4026,7 +4092,7 @@ function renderHistoryList(searchTerm = '') {
             }
             // 加载用户列表到下拉框
             loadUserList();
-            
+
             // 预加载：登录后立即缓存报价列表（后台静默进行）
             if (currentUser) {
                 loadHistoryFromCloud().then(cloudHistory => {
@@ -4041,6 +4107,10 @@ function renderHistoryList(searchTerm = '') {
                 }).catch(err => {
                     console.error('Preload failed:', err);
                 });
+                // ✅ 2026-09-15：登录后自动 sync (1.5s 延迟让 UI 先稳定)
+                setTimeout(() => {
+                    if (typeof manualSync === 'function') manualSync();
+                }, 1500);
             }
         }
         
@@ -4127,6 +4197,8 @@ function renderHistoryList(searchTerm = '') {
                     currentUser = result.user;
                     currentUser.password = password; // Save password for delete verification
                     localStorage.setItem('squirrel_user', JSON.stringify(currentUser));
+                    // ✅ 2026-09-15：记录登录时间戳，24h 后 checkAuth 会强制 logout
+                    localStorage.setItem('squirrel_user_loginTime', Date.now().toString());
                     showMainContent();
                 } else {
                     loginError.textContent = result.message || 'Login failed';
@@ -4302,50 +4374,72 @@ function renderHistoryList(searchTerm = '') {
                 alert('Please login first');
                 return;
             }
-            
+
             const syncBtn = document.getElementById('syncBtn');
             syncBtn.disabled = true;
             syncBtn.textContent = '⟳ Syncing...';
             updateSyncStatus('Syncing...');
-            
-            loadQuotesFromCloud().then(result => {
-                if (result.success && result.quotes) {
-                    // Merge cloud quotes with local history
-                    let localHistory = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                    
-                    result.quotes.forEach(cloudQuote => {
-                        const idx = localHistory.findIndex(h => h.id === cloudQuote.id);
-                        if (idx >= 0) {
-                            // Update existing - use newer one
-                            if (new Date(cloudQuote.lastSynced) > new Date(localHistory[idx].lastSynced || 0)) {
-                                localHistory[idx] = cloudQuote;
+
+            // ✅ 2026-09-15：加重试退避 (1s / 3s / 7s)，最多 4 次避免用户手快点太多触发 GAS 限速
+            const retryDelays = [0, 1000, 3000, 7000];
+            const MAX_ATTEMPTS = retryDelays.length;
+            let attempt = 0;
+            let succeeded = false;
+
+            const finishSync = (status, type) => {
+                syncBtn.disabled = false;
+                syncBtn.textContent = '🔄 Sync';
+                updateSyncStatus(status, type);
+            };
+
+            const attemptSync = () => {
+                loadQuotesFromCloud().then(result => {
+                    if (result.success && result.quotes) {
+                        // Merge cloud quotes with local history
+                        let localHistory = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
+
+                        result.quotes.forEach(cloudQuote => {
+                            const idx = localHistory.findIndex(h => h.id === cloudQuote.id);
+                            if (idx >= 0) {
+                                if (new Date(cloudQuote.lastSynced) > new Date(localHistory[idx].lastSynced || 0)) {
+                                    localHistory[idx] = cloudQuote;
+                                }
+                            } else {
+                                localHistory.push(cloudQuote);
                             }
+                        });
+
+                        localStorage.setItem('quoteHistory', JSON.stringify(localHistory));
+
+                        lastSync = new Date().toISOString();
+                        localStorage.setItem('lastSyncTime', lastSync);
+
+                        succeeded = true;
+                        finishSync('Last: ' + formatSyncTime(lastSync), 'success');
+                        loadHistory();
+                    } else {
+                        // 失败 - 重试
+                        attempt++;
+                        if (attempt < MAX_ATTEMPTS) {
+                            updateSyncStatus(`Retry ${attempt}/${MAX_ATTEMPTS - 1}...`);
+                            setTimeout(attemptSync, retryDelays[attempt]);
                         } else {
-                            // Add new
-                            localHistory.push(cloudQuote);
+                            finishSync('Sync failed', 'error');
                         }
-                    });
-                    
-                    localStorage.setItem('quoteHistory', JSON.stringify(localHistory));
-                    
-                    // Update sync time
-                    lastSync = new Date().toISOString();
-                    localStorage.setItem('lastSyncTime', lastSync);
-                    
-                    updateSyncStatus('Last: ' + formatSyncTime(lastSync));
-                    loadHistory();
-                } else {
-                    updateSyncStatus('Sync failed');
-                }
-                
-                syncBtn.disabled = false;
-                syncBtn.textContent = '🔄 Sync';
-            }).catch(error => {
-                console.error('Sync error:', error);
-                updateSyncStatus('Sync failed');
-                syncBtn.disabled = false;
-                syncBtn.textContent = '🔄 Sync';
-            });
+                    }
+                }).catch(error => {
+                    console.error('Sync error:', error);
+                    attempt++;
+                    if (attempt < MAX_ATTEMPTS) {
+                        updateSyncStatus(`Retry ${attempt}/${MAX_ATTEMPTS - 1}...`);
+                        setTimeout(attemptSync, retryDelays[attempt]);
+                    } else {
+                        finishSync('Sync failed', 'error');
+                    }
+                });
+            };
+
+            attemptSync();
         }
         
         // ========== Share Functions ==========
