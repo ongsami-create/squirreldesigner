@@ -1903,13 +1903,23 @@ body {
                     console.log('GAS returned empty, trying local file...');
                     await loadProductsLocal();
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.error('Failed to load products from GAS:', error);
                 // Try local file as fallback
                 try {
                     await loadProductsLocal();
                 } catch (localError) {
                     console.error('Failed to load products locally:', localError);
+                    // ✅ 2026-09-15：第三层兜底 - 从 localStorage 读上次成功的 products
+                    const cached = localStorage.getItem('products_cache');
+                    if (cached) {
+                        try {
+                            products = JSON.parse(cached);
+                            console.warn('Using stale products cache (GAS + local file both failed). Products count:', products.length);
+                            populateAreaSelect();
+                            return;
+                        } catch (e) {}
+                    }
                     alert('Failed to load products. Please check your connection.');
                 }
             }
