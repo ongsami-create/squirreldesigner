@@ -1874,16 +1874,21 @@ body {
                     console.log('GAS data.products type:', typeof data.products);
                     console.log('GAS data.products isArray:', Array.isArray(data.products));
                     
-                    // 兼容两种格式：数组 [...] 或对象 {...}
+                    // 兼容两种格式：数组 [...] 或包装对象 {products: [...], meta: {...}}
                     let loadedProducts = data.products;
                     if (!Array.isArray(loadedProducts)) {
-                        // 如果是对象格式，转换为数组
-                        let arr = Object.values(loadedProducts);
-                        // 检查是否是嵌套数组 [[...], [...]]，需要展平
-                        if (arr.length > 0 && Array.isArray(arr[0])) {
-                            loadedProducts = arr.flat();
+                        // ✅ 2026-10-01：GAS 返回的 products 是包装对象 {products: [...], meta: {...}}
+                        //    必须取 .products 字段，不能 Object.values().flat() (会把 meta_obj 当假产品塞进去)
+                        if (loadedProducts.products && Array.isArray(loadedProducts.products)) {
+                            loadedProducts = loadedProducts.products;
                         } else {
-                            loadedProducts = arr;
+                            // Legacy 格式 fallback: 嵌套数组 [[...], [...]]
+                            let arr = Object.values(loadedProducts);
+                            if (arr.length > 0 && Array.isArray(arr[0])) {
+                                loadedProducts = arr.flat();
+                            } else {
+                                loadedProducts = arr;
+                            }
                         }
                     }
                     console.log('Loaded products count:', loadedProducts.length);
