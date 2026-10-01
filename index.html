@@ -3419,7 +3419,13 @@ function renderHistoryList(searchTerm = '') {
                 unlockProjNo();
             }
         }
-        function openHistory() { document.getElementById('historyModal').classList.add('active'); }
+        // ✅ 2026-10-01 修：openHistory 等 loadHistory 拉云端最新数据再打开模态
+        // 之前不刷新，竞态导致 stale 数据：backadmin 改了 commission/deposit 标记后
+        // 前端 quoteHistory 还是上次 sync 缓存的旧值，列表显示橙色 + 点 commission 弹"已标记"
+        async function openHistory() {
+            await loadHistory();
+            document.getElementById('historyModal').classList.add('active');
+        }
         function closeHistoryModal() { document.getElementById('historyModal').classList.remove('active'); }
 
         // Quotation - Logo Right, Info Left, Grouped by Area
