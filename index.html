@@ -1983,7 +1983,10 @@ body {
                 }
             });
             // 按products.json中的第一次出现顺序排列
-            const itemAs = [];
+            // ✅ 2026-10-01：let 不是 const — 后面 STUDY ROOM mutate 块会 reassign itemAs = [...new Set(...)]
+            //    如果用 const, 选 STUDY ROOM 时会抛 TypeError: Assignment to constant variable, 
+            //    导致 onAreaChange() 提早 throw, dropdown 不被清也不填新选项
+            let itemAs = [];
             areaProducts.forEach(p => {
                 if (p.itemA && !itemAs.includes(p.itemA)) {
                     itemAs.push(p.itemA);
