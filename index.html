@@ -4303,7 +4303,15 @@ function renderHistoryList(searchTerm = '') {
                 // Update local history with sync info
                 if (result.success) {
                     cloudQuoteId = savedProjNo || projNoToSave;
-                    
+
+                    // ✅ 2026-10-01 修 Bug 1: saveQuote 成功后立即清除 localStorage 缓存
+                    // 否则 loadFullQuoteFromCloud 会返回 <24h 的旧缓存
+                    // 下次叫出看不到新存的定金 100 池（用户在 Bug 1 报的问题）
+                    try {
+                        localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}`);
+                        localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}_time`);
+                    } catch (e) {}
+
                     // Update local storage
                     let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
                     const idx = history.findIndex(h => h.id === syncedQuoteData.id);
@@ -4314,7 +4322,7 @@ function renderHistoryList(searchTerm = '') {
                         history.unshift(syncedQuoteData);
                     }
                     localStorage.setItem('quoteHistory', JSON.stringify(history));
-                    
+
                     loadHistory();
                 }
                 
