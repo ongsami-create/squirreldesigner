@@ -3298,11 +3298,23 @@ function renderHistoryList(searchTerm = '') {
                 }
             }
             // Fallback to local only if cloud failed
+            let fromFallback = false;
             if (!quote) {
                 quote = quoteHistory.find(q => q.id === id);
+                fromFallback = true;
             }
-
+            
             if (!quote) { alert('Quote not found'); return; }
+
+            // ✅ 2026-10-09 加：getQuoteList 已改成只返回元数据（不含 items，GAS 侧性能优化）。
+            //    quoteHistory 因此永远是「元数据列表」。当云端不可用 + 本地无 quote_full 缓存时，
+            //    上面 fallback 拿到的就是没有明细的空壳 —— 直接渲染会出现
+            //    「客户信息都在、但产品列表一片空白」，比直接报错更难排查。
+            //    只拦 fallback 路径；getQuote 返回的正常路径即使 items 为空数组也照常渲染。
+            if (fromFallback && !Array.isArray(quote.items)) {
+                alert('无法加载报价明细。\n\n原因：云端暂时连不上，且本地没有缓存副本。\n请检查网络后重试，或稍后再打开这份报价。');
+                return;
+            }
 
             // ✅ 2026-08-12 加：确保 items 都有 value 字段 (cloud quote 偶尔没 value，触发 renderQuote throw)
             // 对每个 item，如果 value 缺失或 NaN，调 calculateItemTotal 算 (这会设 item.value 和 item.total)
