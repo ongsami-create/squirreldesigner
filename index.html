@@ -3015,8 +3015,33 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             if (editingQuoteId === id) editingQuoteId = null;
         }
 
+        // ✅ 2026-10-09：从云端列表应用到内存 + 持久化（loadHistory 与 manualSync 共用）
+        // 抽成函数的原因：manualSync 已经拿到云端数据了，再调 loadHistory() 会重复拉一次
+        // getQuoteList（实测约 6 秒），这里直接复用，避免一次多余的往返。
+        function applyCloudHistory(cloudHistory) {
+            // 数据迁移：确保所有报价数据都有这三个字段
+            quoteHistory = (cloudHistory || []).map(quote => {
+                if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
+                if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
+                if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
+                return quote;
+            });
+
+            // 更新本地缓存
+            try {
+                localStorage.setItem('quoteHistory_cache', JSON.stringify(quoteHistory));
+                localStorage.setItem('quoteHistory_cacheTime', Date.now().toString());
+            } catch (e) {
+                console.error('Cache save error:', e);
+            }
+
+            // 更新本地存储（兼容旧代码）
+            localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
+            renderHistoryList();
+        }
+
         // Load history - 优化：使用本地缓存加速加载
-        function loadHistory() { 
+        function loadHistory() {
             // 首先加载本地缓存（最快）
             const cachedHistory = localStorage.getItem('quoteHistory_cache');
             const cacheTime = localStorage.getItem('quoteHistory_cacheTime');
@@ -3040,27 +3065,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             
             // 同时从云端更新（后台静默更新）
             if (currentUser) {
-                loadHistoryFromCloud().then(cloudHistory => {
-                    // 数据迁移：确保所有报价数据都有这三个字段
-                    quoteHistory = (cloudHistory || []).map(quote => {
-                        if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
-                        if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
-                        if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
-                        return quote;
-                    });
-                    
-                    // 更新本地缓存
-                    try {
-                        localStorage.setItem('quoteHistory_cache', JSON.stringify(quoteHistory));
-                        localStorage.setItem('quoteHistory_cacheTime', Date.now().toString());
-                    } catch (e) {
-                        console.error('Cache save error:', e);
-                    }
-                    
-                    // 更新本地存储（兼容旧代码）
-                    localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
-                    renderHistoryList();
-                }).catch(err => {
+                loadHistoryFromCloud().then(applyCloudHistory).catch(err => {
                     console.error('Failed to load from cloud:', err);
                 });
             } else {
@@ -4429,28 +4434,18 @@ function renderHistoryList(searchTerm = '') {
             const attemptSync = () => {
                 loadQuotesFromCloud().then(result => {
                     if (result.success && result.quotes) {
-                        // Merge cloud quotes with local history
-                        let localHistory = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-
-                        result.quotes.forEach(cloudQuote => {
-                            const idx = localHistory.findIndex(h => h.id === cloudQuote.id);
-                            if (idx >= 0) {
-                                if (new Date(cloudQuote.lastSynced) > new Date(localHistory[idx].lastSynced || 0)) {
-                                    localHistory[idx] = cloudQuote;
-                                }
-                            } else {
-                                localHistory.push(cloudQuote);
-                            }
-                        });
-
-                        localStorage.setItem('quoteHistory', JSON.stringify(localHistory));
-
+                        // ✅ 2026-10-09 性能优化：直接用刚拉回来的 result.quotes 渲染，
+                        //    不再调 loadHistory()。
+                        //    原因：旧代码在这里先 merge 一遍 localHistory 写进 localStorage，
+                        //    紧接着 loadHistory() 又用云端数据整体覆盖 —— 那次 merge 是白做的，
+                        //    而 loadHistory() 内部还会再拉一次 getQuoteList（实测约 6 秒）。
+                        //    现在一次请求即可完成，行为与旧代码的最终状态一致。
                         lastSync = new Date().toISOString();
                         localStorage.setItem('lastSyncTime', lastSync);
 
                         succeeded = true;
                         finishSync('Last: ' + formatSyncTime(lastSync), 'success');
-                        loadHistory();
+                        applyCloudHistory(result.quotes);
                     } else {
                         // 失败 - 重试
                         attempt++;
