@@ -2961,7 +2961,14 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             cloudResultPromise.then(r => {
                 if (r && r.success) {
                     console.log('Cloud save OK:', projNo);
-                    updateSyncStatus('已同步 ☁️', 'success');
+                    // ✅ 2026-10-27：区分「云端失败」和「本地缓存空间不足」
+                    //    r.localStorageFull = 云端已保存成功，只是浏览器本地缓存写不下
+                    if (r.localStorageFull) {
+                        updateSyncStatus('已同步 ☁️ (本地缓存空间不足)', 'error');
+                        alert('✅ 报价已保存到云端\n\n⚠️ 但浏览器本地缓存空间不足 (约 5MB 上限)，\n下次打开这份报价需要联网下载。');
+                    } else {
+                        updateSyncStatus('已同步 ☁️', 'success');
+                    }
                     lockProjNo();
                 } else {
                     console.warn('Cloud save failed:', r);
@@ -2980,7 +2987,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                 if (existingIndex >= 0) {
                     quote.id = history[existingIndex].id;
                     history[existingIndex] = quote;
-                    localStorage.setItem('quoteHistory', JSON.stringify(history));
+                    safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                     loadHistory();
                     editingQuoteId = quote.id;
                     alert('Quote updated successfully! (cloud sync in background)');
@@ -2997,7 +3004,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             } else {
                 history.unshift(quote);
             }
-            localStorage.setItem('quoteHistory', JSON.stringify(history));
+            safeSetLocalStorage('quoteHistory', JSON.stringify(history));
             loadHistory();
             editingQuoteId = quote.id;
 
@@ -3010,9 +3017,53 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             if (!confirm('Delete this quote from history?')) return;
             let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
             history = history.filter(h => h.id !== id);
-            localStorage.setItem('quoteHistory', JSON.stringify(history));
+            safeSetLocalStorage('quoteHistory', JSON.stringify(history));
             loadHistory();
             if (editingQuoteId === id) editingQuoteId = null;
+        }
+
+        // ✅ 2026-10-27：安全的 localStorage 写入
+        // localStorage 配额约 5MB。报价行数一多（实测约 2000~3000 行 / 单份 2~3MB），
+        // quoteHistory 就写不进去了，setItem 会抛 QuotaExceededError。
+        // 以前没有 try 保护，异常会一路冒泡到外层 catch，把「云端其实已经存好了」
+        // 误报成「同步失败 ⚠️」—— 用户以为没存上云端，其实 Drive 里已经有了。
+        // 返回 false 表示写不进去（配额满），调用方据此如实提示，而不是假装保存失败。
+        function safeSetLocalStorage(key, value) {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                console.warn('localStorage 写入失败 (' + key + ')，配额可能已满:', e);
+                return false;
+            }
+        }
+
+        // ✅ 2026-10-27：清理过期的 quote_full_* 缓存
+        // 这些条目只在「读取时」判断 24h 过期，从来没被真正删除过，
+        // 长期累积白占 localStorage 配额，报价行数一多就写不进去。
+        function cleanupStaleQuoteCache() {
+            try {
+                const now = Date.now();
+                const TTL = 24 * 60 * 60 * 1000;
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.indexOf('quote_full_') === 0) keys.push(k);
+                }
+                let removed = 0;
+                keys.forEach(k => {
+                    const timeKey = k + '_time';
+                    // 有 _time 的才是数据键（单独的 _time 键会自然被跳过）
+                    if (localStorage.getItem(timeKey) === null) return;
+                    const t = parseInt(localStorage.getItem(timeKey) || '0', 10);
+                    if (!t || (now - t) > TTL) {
+                        localStorage.removeItem(k);
+                        localStorage.removeItem(timeKey);
+                        removed++;
+                    }
+                });
+                if (removed) console.log('Cleaned ' + removed + ' stale quote_full cache entries');
+            } catch (e) {}
         }
 
         // ✅ 2026-10-09：从云端列表应用到内存 + 持久化（loadHistory 与 manualSync 共用）
@@ -3036,12 +3087,14 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             }
 
             // 更新本地存储（兼容旧代码）
-            localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
+            safeSetLocalStorage('quoteHistory', JSON.stringify(quoteHistory));
             renderHistoryList();
         }
 
         // Load history - 优化：使用本地缓存加速加载
         function loadHistory() {
+            // ✅ 2026-10-27：顺手清掉过期的 quote_full_* 缓存，腾出 localStorage 配额
+            cleanupStaleQuoteCache();
             // 首先加载本地缓存（最快）
             const cachedHistory = localStorage.getItem('quoteHistory_cache');
             const cacheTime = localStorage.getItem('quoteHistory_cacheTime');
@@ -3267,7 +3320,7 @@ function renderHistoryList(searchTerm = '') {
                 // Delete from local history by id
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
                 history = history.filter(h => h.id !== id && h.projNo !== projNo);
-                localStorage.setItem('quoteHistory', JSON.stringify(history));
+                safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                 quoteHistory = history;
                 renderHistoryList();
                 alert('Quote deleted successfully!');
@@ -3296,7 +3349,7 @@ function renderHistoryList(searchTerm = '') {
                         } else {
                             quoteHistory.unshift(quote);
                         }
-                        localStorage.setItem('quoteHistory', JSON.stringify(quoteHistory));
+                        safeSetLocalStorage('quoteHistory', JSON.stringify(quoteHistory));
                     }
                 } catch (e) {
                     console.error('Failed to load from cloud:', e);
@@ -4352,11 +4405,16 @@ function renderHistoryList(searchTerm = '') {
                     } else {
                         history.unshift(syncedQuoteData);
                     }
-                    localStorage.setItem('quoteHistory', JSON.stringify(history));
+                    // ✅ 2026-10-27：云端已经存好了，这里写不进本地缓存要如实标记，
+                    //    不能再冒泡成「同步失败」让用户以为没存上云端
+                    const stored = safeSetLocalStorage('quoteHistory', JSON.stringify(history));
+                    if (!stored) {
+                        result.localStorageFull = true;
+                    }
 
                     loadHistory();
                 }
-                
+
                 return result;
             } catch (error) {
                 console.error('Save to cloud error:', error);
@@ -4664,7 +4722,7 @@ function renderHistoryList(searchTerm = '') {
                         const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
                         if (idx >= 0) {
                             history[idx] = quote;
-                            localStorage.setItem('quoteHistory', JSON.stringify(history));
+                            safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                             quoteHistory = history;
                         }
                     }
@@ -4727,7 +4785,7 @@ function renderHistoryList(searchTerm = '') {
                 } else {
                     history.unshift(quote);
                 }
-                localStorage.setItem('quoteHistory', JSON.stringify(history));
+                safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                 quoteHistory = history;
                 renderHistoryList();
 
@@ -4798,7 +4856,7 @@ function renderHistoryList(searchTerm = '') {
                 } else {
                     history.unshift(quote);
                 }
-                localStorage.setItem('quoteHistory', JSON.stringify(history));
+                safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                 quoteHistory = history;
                 renderHistoryList();
 
@@ -4953,7 +5011,7 @@ function renderHistoryList(searchTerm = '') {
                     if (idx >= 0) {
                         history[idx] = quote;
                     }
-                    localStorage.setItem('quoteHistory', JSON.stringify(history));
+                    safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                     quoteHistory = history;
 
                     // 锁定当前表单的客户信息 input
