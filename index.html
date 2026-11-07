@@ -8078,13 +8078,47 @@ const SQProfile = (function () {
 
   /* ---------------- 添加信息 / 创建信息流 ---------------- */
 
+  /** 类型下拉的候选（OrderFile 的 chips，按当前角色取） */
+  let typeChips = null;
+
+  async function loadTypeChips() {
+    if (typeChips) return typeChips;
+    try {
+      const r = await ofApi('getConfig', {});
+      const sets = (r && r.chipSets && r.chipSets.types) || {};
+      const role = session ? session.role : 'sales';
+      let list = sets[role];
+      if (!Array.isArray(list) || !list.length) {
+        // 这个角色没配 → 合并所有角色的（去重）
+        const all = [];
+        Object.keys(sets).forEach(function (k) {
+          if (Array.isArray(sets[k])) sets[k].forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
+        });
+        list = all;
+      }
+      typeChips = list.slice(0, 30);
+    } catch (e) {
+      typeChips = [];
+    }
+    return typeChips;
+  }
+
+  function typeOptionsHtml() {
+    const list = typeChips || [];
+    let h = '<option value="">类型（默认「沟通」）</option>';
+    for (let i = 0; i < list.length; i++) {
+      h += '<option value="' + esc(list[i]) + '">' + esc(list[i]) + '</option>';
+    }
+    return h;
+  }
+
   function composeHtml(title, btnLabel, withType) {
     return '<div class="sq-profile-compose">' +
       '<div class="sq-profile-compose-title">' + esc(title) + '</div>' +
       '<textarea id="sqProfileInput" class="sq-profile-textarea" rows="4" ' +
         'placeholder="写点什么…（可以留空）"></textarea>' +
       (withType
-        ? '<select id="sqProfileType" class="sq-profile-select"><option value="">类型（默认「沟通」）</option></select>'
+        ? '<select id="sqProfileType" class="sq-profile-select">' + typeOptionsHtml() + '</select>'
         : '') +
       '<div class="sq-profile-compose-actions">' +
         '<button class="sq-modal-btn primary" id="sqProfileSubmit">' + esc(btnLabel) + '</button>' +
@@ -8093,22 +8127,40 @@ const SQProfile = (function () {
     '</div>';
   }
 
-  function openCompose() {
+  /** 展开输入区时把底部对应按钮藏掉（否则会出现两个入口，看着像 bug） */
+  function hideFootButton(sel) {
+    if (!mask) return;
+    const foot = mask.querySelector('.sq-modal-foot');
+    if (!foot) return;
+    const btn = foot.querySelector(sel);
+    if (btn) btn.style.display = 'none';
+  }
+
+  async function openCompose() {
     const b = bodyEl();
     if (!b) return;
     const arch = state_arch;
     if (!arch) return;
     b.innerHTML = composeHtml('添加信息', '提交', true);
+    hideFootButton('[data-add]');
+    // 类型候选异步补上（先渲染再填，不让用户等）
+    loadTypeChips().then(function () {
+      const sel = document.getElementById('sqProfileType');
+      if (sel && sel.innerHTML.indexOf('option value="沟通"') < 0) {
+        sel.innerHTML = typeOptionsHtml();
+      }
+    }).catch(function () {});
     const submit = document.getElementById('sqProfileSubmit');
     if (submit) submit.onclick = function () { doSubmit(arch.projNo, false); };
     const cancel = document.getElementById('sqProfileCancel');
     if (cancel) cancel.onclick = function () { renderOrder(arch); };
   }
 
-  function openCreate() {
+  async function openCreate() {
     const b = bodyEl();
     if (!b) return;
     b.innerHTML = composeHtml('创建信息流', '创建', false);
+    hideFootButton('[data-create]');
     const submit = document.getElementById('sqProfileSubmit');
     if (submit) submit.onclick = function () { doSubmit(state_projNo, true); };
     const cancel = document.getElementById('sqProfileCancel');
