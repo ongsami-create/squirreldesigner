@@ -1106,12 +1106,19 @@ body {
     transition: background 0.15s ease, border-color 0.15s ease;
 }
 .btn-profile:hover { background: rgba(31, 182, 196, 0.20); border-color: rgba(31, 182, 196, 0.60); }
-.btn-profile:disabled {
-    opacity: 0.42;
-    cursor: not-allowed;
+/* ⚠ 2026-11-08：**不用 :disabled** —— disabled 按钮收不到 click，会被锁死。
+   改成 .empty 纯视觉提示：按钮照样能点，点了没填 Proj No 就给提示。 */
+.btn-profile.empty {
+    opacity: 0.55;
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.12);
     color: #8e8e93;
+}
+.btn-profile.empty:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.07);
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #6e6e73;
 }
 .sq-profile-modal { max-width: 720px; }
 .sq-profile-hero { margin-bottom: 14px; }
@@ -7821,6 +7828,16 @@ const SQProfile = (function () {
    * 绑定「客户画像」按钮
    * ⚠ init() 会被调用多次（登录 + 自动登录），所以事件用**委托**挂在 document 上，
    *   且用标记位防止重复绑定 → 不会重复触发。
+   *
+   * ⚠⚠ 2026-11-08 修「按钮锁死」：
+   *   原实现用 `btn.disabled = !projNo` 来表达「没填 Proj No 就不能点」。
+   *   两个致命问题：
+   *     ① **disabled 的按钮根本不派发 click** → 委托监听器永远收不到 → 彻底锁死
+   *     ② projNo 常常是**代码赋值**的（打开历史报价时 .value = quote.projNo），
+   *        不触发 input 事件 → syncButtonState 从没跑过 → 一直保持初始置灰态
+   *   ⇒ 现在**永不 disabled**：按钮永远可点，点的时候现读 projNo 的实时值。
+   *      没填就提示「请先填写 Proj No」，填了就开弹窗。
+   *      视觉上仍用 .empty 提示「当前没内容」，但不影响点击。
    */
   function bindButton() {
     if (typeof document === 'undefined') return;
@@ -7829,23 +7846,43 @@ const SQProfile = (function () {
       document.addEventListener('click', function (e) {
         const btn = e.target && e.target.closest ? e.target.closest('#btnCustomerProfile') : null;
         if (!btn) return;
+        // ⚠ 现读实时值 —— 不依赖任何同步时机
         const el = document.getElementById('projNo');
-        open(el ? el.value : '');
+        const pno = el ? String(el.value || '').trim() : '';
+        if (!pno) {
+          profileToast('请先填写 Proj No，再看客户画像', true);
+          if (el && el.focus) el.focus();
+          return;
+        }
+        open(pno);
       });
-      // Proj No 变了 → 按钮置灰状态跟着变（编辑旧报价时 projNo 是后填的）
+      // Proj No 变了 → 只更新视觉提示（.empty），**不碰 disabled**
       document.addEventListener('input', function (e) {
         if (e.target && e.target.id === 'projNo') syncButtonState();
       });
+      // ⚠ 代码赋值 projNo（打开历史报价）不触发 input → 视觉提示会滞后。
+      //   但这**不影响功能**：按钮永远可点，点击时现读实时值。
+      //   这里只补一次视觉同步，轮询间隔 1 秒，代价可忽略。
+      setInterval(function () {
+        if (document.getElementById('btnCustomerProfile')) syncButtonState();
+      }, 1000);
     }
     syncButtonState();
   }
 
-  /** Proj No 为空 → 按钮置灰（点了也只是提示，不该让人以为有内容） */
+  /**
+   * 更新按钮的**视觉**状态（不是 disabled！）
+   * ⚠ 绝不用 disabled 表达「暂时不能点」—— disabled 按钮收不到 click。
+   */
   function syncButtonState() {
     const btn = document.getElementById('btnCustomerProfile');
     const el = document.getElementById('projNo');
     if (!btn || !el) return;
-    btn.disabled = !String(el.value || '').trim();
+    const empty = !String(el.value || '').trim();
+    btn.className = btn.className.replace(/ ?empty/, '') + (empty ? ' empty' : '');
+    btn.title = empty
+      ? '先填写 Proj No，才能看这位客户的信息流'
+      : '查看这位客户在 OrderFile 的信息流';
   }
 
   /* ---------------- 自动登入 OrderFile ---------------- */
