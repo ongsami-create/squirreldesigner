@@ -8178,6 +8178,20 @@ const SQProfile = (function () {
 
   /* ---------------- 打开弹窗（主入口） ---------------- */
 
+  /**
+   * peekOrder 报错的友好文案
+   * ⚠ OrderFile GAS 还没部署 peekOrder 时，后端会回
+   *    「unknown action: peekOrder」→ 这是**版本没升**，不是用户操作错。
+   *    明确说清楚，别让业务员以为是自己哪里填错了。
+   */
+  function peekOrderError_(err) {
+    const msg = String((err && err.message) || err || '');
+    if (msg.indexOf('unknown action') >= 0 && msg.indexOf('peekOrder') >= 0) {
+      return 'OrderFile 尚未升级，客户画像暂时用不了。请联系管理员部署新版 OrderFile 后端。';
+    }
+    return msg || '读不出来，请稍后再试';
+  }
+
   async function open(projNo) {
     const pno = String(projNo || '').trim();
     if (!pno) {
@@ -8202,11 +8216,11 @@ const SQProfile = (function () {
     try {
       peek = await ofApi('peekOrder', { projNo: pno });
     } catch (e) {
-      renderError(e.message || '读不出来，请稍后再试');
+      renderError(peekOrderError_(e));
       return;
     }
     if (!peek || !peek.ok) {
-      renderError((peek && peek.error) || '读不出来，请稍后再试');
+      renderError(peekOrderError_(peek && peek.error ? { message: peek.error } : null));
       return;
     }
     if (!peek.exists) {
