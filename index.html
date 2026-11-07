@@ -1053,6 +1053,39 @@ body {
     color: #1d1d1f;
 }
 .sq-modal-btn:hover { background: rgba(0,0,0,0.10); }
+
+/* ---------- 公告列表弹窗（页内，不跳转到另一个站点） ---------- */
+.sq-announce-list { display: flex; flex-direction: column; gap: 10px; }
+.sq-announce-card {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.sq-announce-card:hover { background: rgba(31, 182, 196, 0.06); border-color: rgba(31, 182, 196, 0.30); }
+.sq-announce-card.urgent { border-color: rgba(255, 59, 48, 0.35); }
+.sq-announce-card.expired { opacity: 0.62; }
+.sq-announce-card-title {
+    font-size: 14px; font-weight: 600; color: #1d1d1f;
+    display: flex; align-items: center; gap: 6px; line-height: 1.45;
+}
+.sq-announce-card-excerpt {
+    font-size: 12.5px; color: #6e6e73; margin-top: 5px; line-height: 1.6;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.sq-announce-card-meta { font-size: 11.5px; color: #8e8e93; margin-top: 7px; }
+.sq-announce-card-tag {
+    font-size: 10px; font-weight: 700; color: #fff; background: #FF3B30;
+    border-radius: 4px; padding: 1px 5px; flex-shrink: 0;
+}
+.sq-announce-card-tag.grey { background: #8e8e93; }
+.sq-announce-card .sq-dot-unread {
+    width: 7px; height: 7px; border-radius: 50%; background: #FF3B30;
+    display: inline-block; flex-shrink: 0;
+}
+.sq-announce-empty { text-align: center; color: #8e8e93; font-size: 13px; padding: 32px 0; }
 </style>
 </head>
 <body>
@@ -1086,7 +1119,7 @@ body {
         <div class="sq-announce-viewport">
             <div class="sq-announce-track" id="sqAnnounceTrack"></div>
         </div>
-        <button class="sq-announce-all" id="sqAnnounceAll" onclick="SQAnnounce.openWall()">全部公告 ▸</button>
+        <button class="sq-announce-all" id="sqAnnounceAll" onclick="SQAnnounce.openList()">全部公告 ▸</button>
     </div>
     <!-- Header -->
     <header class="header">
@@ -7140,20 +7173,31 @@ document.addEventListener('DOMContentLoaded', initFloatingBall);
 /* ==========================================================================
    SQAnnounce — 顶部公告跑马灯（接 Squirrel Announcement，2026-11-07）
    ---------------------------------------------------------------------------
-   - 数据源：公告 GAS 的公开 action getMarquee / getOne / markRead
-             （这三个不需要 token → 报价系统不依赖公告系统的鉴权实现）
+   - 数据源：公告 GAS 的公开 action getMarquee / getWall / getOne / markRead
+             （这四个不需要 token → 报价系统不依赖公告系统的鉴权实现）
    - 只显示「全公司 + 登录人所属部门」的公告，别的部门专属的看不到
    - 布局：挂在 .header 上方，高度由 --announce-bar-h 收口
            没有公告时高度 0 → 页面布局跟没加这条一样
+   - ⚠️ 2026-11-07 用户改版：「全部公告」不再跳转另一个站点，
+           改成在报价系统里弹窗，只显示当前账号部门的公告。
+           → 数据用 getWall（一次拿全量）+ 前端按 currentUser.departments 过滤，
+             不用改 GAS、不用再部署。
    ========================================================================== */
 const SQAnnounce = (function () {
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgzh1_cO7O9GqsASza9Jyy0gbUXf7dZ7BZpkFCJ3xKhDBVGq7rrUHtxr9864hRvrcj/exec';
-  const WALL_URL = 'https://ongsami-create.github.io/squirrelannouncement/?view=wall';
   const READ_KEY = 'squirrel_announcement_read';
   const LIMIT = 8;
   const REFRESH_MS = 5 * 60 * 1000;
 
-  let items = [];
+  // 部门 key → 中文（与公告系统 / backadmin 一致）
+  const DEPT_ZH = {
+    admin: '管理员', agent: '代理', designer: '设计师', logistics: '物流',
+    sales: '销售', install: '安装', orderClerk: '下单员'
+  };
+
+  let items = [];        // 跑马灯用的轻量条目（getMarquee，最多 LIMIT 条）
+  let wallItems = [];    // 列表弹窗用的完整记录（getWall，已按我的部门过滤）
+  let listMask = null;   // 列表弹窗的 DOM（存在 = 列表已开着）
   let lastFetch = 0;
 
   function esc(s) {
@@ -7161,6 +7205,8 @@ const SQAnnounce = (function () {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  function deptLabel(key) { return DEPT_ZH[key] || key; }
 
   /** 部门参数：多部门去重拼接；没有部门 → 哨兵 __none__（只剩全公司公告） */
   function announceDeptParam_(depts) {
@@ -7175,6 +7221,23 @@ const SQAnnounce = (function () {
       '&depts=' + encodeURIComponent(deptsParam) +
       '&dept=' + encodeURIComponent(firstDept || '__none__') +
       '&limit=' + LIMIT;
+  }
+
+  /**
+   * 按登录人部门过滤公告（纯函数，方便单测）
+   * 规则：全公司公告人人可见；部门专属的只要命中我一个部门就算
+   */
+  function announceFilterByDepts_(list, depts) {
+    const my = (depts || []).map(function (d) { return String(d).trim(); }).filter(Boolean);
+    return (list || []).filter(function (a) {
+      if (!a) return false;
+      if (a.allCompany) return true;
+      const ds = (a.departments || []).map(function (d) { return String(d); });
+      for (let i = 0; i < ds.length; i++) {
+        if (my.indexOf(ds[i]) >= 0) return true;
+      }
+      return false;
+    });
   }
 
   function announceReadIds_() {
@@ -7216,8 +7279,8 @@ const SQAnnounce = (function () {
     bar.hidden = false;
     document.body.classList.add('has-announce');
     track.onclick = function (e) {
-      const el = e.target.closest('.sq-announce-item');
-      if (el) openDetail(el.dataset.id);
+      const el = e.target && e.target.closest ? e.target.closest('.sq-announce-item') : null;
+      if (el) openDetail(el.dataset.id, false);
     };
   }
 
@@ -7237,65 +7300,163 @@ const SQAnnounce = (function () {
     }
   }
 
-  async function openDetail(id) {
-    const it = items.find(function (x) { return x.id === id; });
-    if (!it) return;
-    try {
-      const res = await fetch(GAS_URL + '?action=getOne&id=' + encodeURIComponent(id));
-      const data = await res.json();
-      if (!data || !data.ok) return;
-      const a = data.announcement;
-      announceMarkRead_(id);
-      // 顺手报给公告系统 → 管理员能查「谁读了」（fire-and-forget，不阻塞）
-      try {
-        fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'markRead', id: id, reader: (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '' })
-        }).catch(function () {});
-      } catch (e) {}
+  /* ---------- 公告列表弹窗（页内） ---------- */
 
-      let body = '';
-      if (a.zh && a.zh.title) {
-        body += '<div class="sq-modal-section">中文</div>' +
-                '<div class="sq-modal-subtitle">' + esc(a.zh.title) + '</div>' +
-                '<div class="sq-modal-content">' + esc(a.zh.content) + '</div>';
-      }
-      if (a.language === 'zh-en' && a.en && (a.en.title || a.en.content)) {
-        body += '<div class="sq-modal-section">English</div>';
-        if (a.en.title) body += '<div class="sq-modal-subtitle">' + esc(a.en.title) + '</div>';
-        body += '<div class="sq-modal-content">' + esc(a.en.content) + '</div>';
-      }
-
-      const mask = document.createElement('div');
-      mask.className = 'sq-modal-mask';
-      mask.innerHTML =
-        '<div class="sq-modal">' +
-          '<div class="sq-modal-head">' +
-            '<div class="sq-modal-title">' + esc(it.title) + '</div>' +
-            '<div class="sq-modal-meta">' +
-              (it.end ? '<span>⏳ 有效至 ' + esc(it.end) + '</span>' : '') +
-              '<span>📤 发布于 ' + esc((a.publishedAt || '').slice(0, 10)) + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="sq-modal-body">' + body + '</div>' +
-          '<div class="sq-modal-foot">' +
-            '<button class="sq-modal-btn" data-wall>查看全部公告</button>' +
-            '<button class="sq-modal-btn" data-close>关闭</button>' +
-          '</div>' +
-        '</div>';
-      mask.onclick = function (e) {
-        if (e.target === mask || e.target.dataset.close !== undefined) mask.remove();
-        if (e.target.dataset.wall !== undefined) { mask.remove(); openWall(); }
-      };
-      document.body.appendChild(mask);
-      render(items);   // 刷新未读标记
-    } catch (e) {
-      console.warn('[SQAnnounce] 打开详情失败:', e.message);
-    }
+  function listCardHtml(a, read) {
+    const unread = read.indexOf(a.id) < 0;
+    const urgent = a.priority === 1;
+    const expired = a.status === 'expired';
+    const title = (a.zh && a.zh.title) || (a.en && a.en.title) || '(无标题)';
+    const dept = a.allCompany ? '全公司' : (a.departments || []).map(deptLabel).join('、');
+    const excerpt = ((a.zh && a.zh.content) || '').replace(/\n/g, ' ').slice(0, 120);
+    const date = String(a.publishedAt || '').slice(0, 10);
+    return '<div class="sq-announce-card' + (urgent ? ' urgent' : '') + (expired ? ' expired' : '') +
+        '" data-id="' + esc(a.id) + '">' +
+      '<div class="sq-announce-card-title">' +
+        (unread ? '<span class="sq-dot-unread"></span>' : '') +
+        esc(title) +
+        (urgent ? '<span class="sq-announce-card-tag">紧急</span>' : '') +
+        (expired ? '<span class="sq-announce-card-tag grey">已过期</span>' : '') +
+      '</div>' +
+      (excerpt ? '<div class="sq-announce-card-excerpt">' + esc(excerpt) + '</div>' : '') +
+      '<div class="sq-announce-card-meta">' + esc(dept) + (date ? ' · ' + esc(date) : '') + '</div>' +
+    '</div>';
   }
 
-  function openWall() { window.open(WALL_URL, '_blank', 'noopener'); }
+  function closeList() {
+    if (listMask) { listMask.remove(); listMask = null; }
+  }
+
+  function showListModal(list) {
+    closeList();
+    const read = announceReadIds_();
+    const depts = (typeof currentUser !== 'undefined' && currentUser && currentUser.departments) || [];
+    const body = list.length
+      ? '<div class="sq-announce-list">' + list.map(function (a) { return listCardHtml(a, read); }).join('') + '</div>'
+      : '<div class="sq-announce-empty">暂时没有属于你部门的公告</div>';
+
+    const mask = document.createElement('div');
+    mask.className = 'sq-modal-mask';
+    mask.innerHTML =
+      '<div class="sq-modal">' +
+        '<div class="sq-modal-head">' +
+          '<div class="sq-modal-title">公司公告</div>' +
+          '<div class="sq-modal-meta">' +
+            '<span>共 ' + list.length + ' 条</span>' +
+            (depts.length
+              ? '<span>🏢 ' + esc(depts.map(deptLabel).join('、')) + '</span>'
+              : '<span>🏢 你的账号没有部门 → 只显示全公司公告</span>') +
+          '</div>' +
+        '</div>' +
+        '<div class="sq-modal-body">' + body + '</div>' +
+        '<div class="sq-modal-foot">' +
+          '<button class="sq-modal-btn" data-close>关闭</button>' +
+        '</div>' +
+      '</div>';
+    mask.onclick = function (e) {
+      if (e.target === mask || e.target.dataset.close !== undefined) { closeList(); return; }
+      const card = e.target && e.target.closest ? e.target.closest('.sq-announce-card') : null;
+      if (card && card.dataset.id) openDetail(card.dataset.id, true);
+    };
+    document.body.appendChild(mask);
+    listMask = mask;
+  }
+
+  /**
+   * 「全部公告」→ 页内弹窗，只显示当前账号所属部门的公告（不跳转到另一个站点）
+   */
+  async function openList() {
+    const depts = (typeof currentUser !== 'undefined' && currentUser && currentUser.departments) || [];
+    try {
+      const res = await fetch(GAS_URL + '?action=getWall');
+      const data = await res.json();
+      if (data && data.ok) {
+        wallItems = announceFilterByDepts_(data.announcements || [], depts);
+      }
+    } catch (e) {
+      console.warn('[SQAnnounce] 加载公告列表失败:', e.message);
+      // 网络挂了但之前拿到过 → 用缓存的，别让用户看到空白
+      if (!wallItems.length) return;
+    }
+    showListModal(wallItems);
+  }
+
+  /* ---------- 详情弹窗 ---------- */
+
+  async function openDetail(id, fromList) {
+    let a = null;
+    let title = '';
+    // 列表弹窗里的记录是完整的 → 直接用，不用再请求一次
+    const wall = wallItems.find(function (x) { return x.id === id; });
+    if (wall) {
+      a = wall;
+      title = (a.zh && a.zh.title) || (a.en && a.en.title) || '';
+    } else {
+      const lite = items.find(function (x) { return x.id === id; });
+      if (!lite) return;
+      title = lite.title || '';
+      try {
+        const res = await fetch(GAS_URL + '?action=getOne&id=' + encodeURIComponent(id));
+        const data = await res.json();
+        if (!data || !data.ok) return;
+        a = data.announcement;
+      } catch (e) {
+        console.warn('[SQAnnounce] 打开详情失败:', e.message);
+        return;
+      }
+    }
+    if (!a) return;
+
+    announceMarkRead_(id);
+    // 顺手报给公告系统 → 管理员能查「谁读了」（fire-and-forget，不阻塞）
+    try {
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'markRead', id: id, reader: (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '' })
+      }).catch(function () {});
+    } catch (e) {}
+
+    let body = '';
+    if (a.zh && a.zh.title) {
+      body += '<div class="sq-modal-section">中文</div>' +
+              '<div class="sq-modal-subtitle">' + esc(a.zh.title) + '</div>' +
+              '<div class="sq-modal-content">' + esc(a.zh.content) + '</div>';
+    }
+    if (a.language === 'zh-en' && a.en && (a.en.title || a.en.content)) {
+      body += '<div class="sq-modal-section">English</div>';
+      if (a.en.title) body += '<div class="sq-modal-subtitle">' + esc(a.en.title) + '</div>';
+      body += '<div class="sq-modal-content">' + esc(a.en.content) + '</div>';
+    }
+
+    const mask = document.createElement('div');
+    mask.className = 'sq-modal-mask';
+    mask.innerHTML =
+      '<div class="sq-modal">' +
+        '<div class="sq-modal-head">' +
+          '<div class="sq-modal-title">' + esc(title) + '</div>' +
+          '<div class="sq-modal-meta">' +
+            (a.dateRange && a.dateRange.end ? '<span>⏳ 有效至 ' + esc(a.dateRange.end) + '</span>' : '') +
+            '<span>📤 发布于 ' + esc(String(a.publishedAt || '').slice(0, 10)) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sq-modal-body">' + body + '</div>' +
+        '<div class="sq-modal-foot">' +
+          '<button class="sq-modal-btn" data-list>' + (fromList ? '返回列表' : '查看全部公告') + '</button>' +
+          '<button class="sq-modal-btn" data-close>关闭</button>' +
+        '</div>' +
+      '</div>';
+    mask.onclick = function (e) {
+      if (e.target === mask || e.target.dataset.close !== undefined) { mask.remove(); return; }
+      if (e.target.dataset.list !== undefined) {
+        mask.remove();
+        // 列表已经开着就只关详情；没开就地开一个（页内，不跳转）
+        if (!listMask) openList();
+      }
+    };
+    document.body.appendChild(mask);
+    render(items);   // 刷新未读标记
+  }
 
   /** 页面切回前台且超过 5 分钟 → 重新拉一次 */
   function maybeRefresh() {
@@ -7306,7 +7467,7 @@ const SQAnnounce = (function () {
     if (document.visibilityState === 'visible') maybeRefresh();
   });
 
-  return { init: init, refresh: init, openWall: openWall };
+  return { init: init, refresh: init, openList: openList };
 })();
 </script>
 </body>
