@@ -1086,6 +1086,200 @@ body {
     display: inline-block; flex-shrink: 0;
 }
 .sq-announce-empty { text-align: center; color: #8e8e93; font-size: 13px; padding: 32px 0; }
+
+/* ---------- 客户画像弹窗（2026-11-07） ---------- */
+.btn-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 38px;
+    padding: 0 13px;
+    border: 1px solid rgba(31, 182, 196, 0.38);
+    border-radius: 10px;
+    background: rgba(31, 182, 196, 0.10);
+    color: #14808b;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.btn-profile:hover { background: rgba(31, 182, 196, 0.20); border-color: rgba(31, 182, 196, 0.60); }
+.btn-profile:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #8e8e93;
+}
+.sq-profile-modal { max-width: 720px; }
+.sq-profile-hero { margin-bottom: 14px; }
+.sq-profile-hero .no {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #8e8e93;
+    margin-bottom: 3px;
+}
+.sq-profile-hero .nm { font-size: 21px; font-weight: 700; color: #1d1d1f; line-height: 1.3; }
+.sq-profile-status {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+.sq-profile-status.todo { background: rgba(255, 159, 10, 0.16); color: #b26a00; }
+.sq-profile-status.done { background: rgba(48, 209, 88, 0.16); color: #1c7c38; }
+.sq-profile-kvwrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 18px;
+    background: rgba(0, 0, 0, 0.028);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+.sq-profile-kv { display: flex; gap: 10px; font-size: 13px; min-width: 0; }
+.sq-profile-kv .k { color: #8e8e93; flex: 0 0 62px; }
+.sq-profile-kv .v { color: #1d1d1f; word-break: break-word; min-width: 0; }
+.sq-profile-section {
+    font-size: 12px;
+    font-weight: 700;
+    color: #8e8e93;
+    letter-spacing: 0.4px;
+    margin: 18px 0 9px;
+}
+.sq-profile-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sq-profile-chip {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(31, 182, 196, 0.13);
+    color: #14808b;
+}
+.sq-profile-chip.pref { background: rgba(107, 93, 63, 0.13); color: #6B5D3F; }
+.sq-profile-note {
+    margin-top: 9px;
+    font-size: 13px;
+    color: #1d1d1f;
+    line-height: 1.6;
+    background: rgba(0, 0, 0, 0.028);
+    border-radius: 8px;
+    padding: 9px 11px;
+}
+.sq-profile-empty-inline { font-size: 13px; color: #8e8e93; }
+.sq-profile-empty {
+    text-align: center;
+    color: #8e8e93;
+    font-size: 13px;
+    padding: 26px 12px;
+    line-height: 1.75;
+}
+.sq-profile-empty.err { color: #d70015; }
+.sq-profile-tl { position: relative; padding-left: 16px; }
+.sq-profile-tl::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    bottom: 6px;
+    width: 1.5px;
+    background: rgba(0, 0, 0, 0.09);
+}
+.sq-profile-tli { position: relative; padding: 0 0 16px; }
+.sq-profile-tli::before {
+    content: '';
+    position: absolute;
+    left: -15px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c7c7cc;
+}
+.sq-profile-tli.mine::before { background: #1FB6C4; }
+.sq-profile-tli-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.sq-profile-tli-h b { font-size: 13px; color: #1d1d1f; }
+.sq-profile-tli-time { margin-left: auto; font-size: 11.5px; color: #8e8e93; }
+.sq-profile-tag {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.sq-profile-tag.t { background: rgba(31, 182, 196, 0.15); color: #14808b; }
+.sq-profile-tag.r { background: rgba(107, 93, 63, 0.15); color: #6B5D3F; }
+.sq-profile-tli-c {
+    font-size: 13.5px;
+    color: #1d1d1f;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.sq-profile-tli-a { margin-top: 5px; font-size: 12px; color: #6e6e73; }
+.sq-profile-todos { list-style: none; margin: 7px 0 0; padding: 0; }
+.sq-profile-todos li { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; color: #1d1d1f; margin-bottom: 3px; }
+.sq-profile-todos li .box {
+    width: 13px; height: 13px;
+    border: 1.5px solid #c7c7cc;
+    border-radius: 3.5px;
+    flex: 0 0 13px;
+    margin-top: 2px;
+}
+.sq-profile-todos li.done { color: #8e8e93; text-decoration: line-through; }
+.sq-profile-todos li.done .box { background: #30D158; border-color: #30D158; }
+.sq-profile-compose { display: flex; flex-direction: column; gap: 10px; }
+.sq-profile-compose-title { font-size: 14px; font-weight: 700; color: #1d1d1f; }
+.sq-profile-textarea {
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    font-family: inherit;
+    line-height: 1.6;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.sq-profile-textarea:focus { outline: none; border-color: rgba(31, 182, 196, 0.65); }
+.sq-profile-select {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+}
+.sq-profile-compose-actions { display: flex; gap: 8px; }
+.sq-modal-btn.primary {
+    background: #1FB6C4;
+    border-color: #1FB6C4;
+    color: #fff;
+    font-weight: 600;
+}
+.sq-modal-btn.primary:hover { background: #189aa6; border-color: #189aa6; }
+.sq-profile-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 44px;
+    transform: translateX(-50%) translateY(12px);
+    background: rgba(29, 29, 31, 0.93);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 100000;
+    max-width: 80vw;
+    text-align: center;
+}
+.sq-profile-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.sq-profile-toast.err { background: rgba(215, 0, 21, 0.94); }
 </style>
 </head>
 <body>
@@ -1204,7 +1398,10 @@ body {
                 <div class="customer-grid">
                     <div class="form-group">
                         <label class="form-label">Proj No</label>
-                        <input type="text" class="form-input" id="projNo" placeholder="Project No">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="text" class="form-input" id="projNo" placeholder="Project No" style="flex:1;min-width:0;">
+                            <button type="button" class="btn-profile" id="btnCustomerProfile" title="查看这位客户在 OrderFile 的信息流">👤 画像</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Salesperson Name</label>
@@ -4555,6 +4752,11 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                 SQAnnounce.init();
             }
 
+            // 客户画像（OrderFile）：登录后自动登入，静默失败不影响报价系统
+            if (typeof SQProfile !== 'undefined' && SQProfile.init) {
+                SQProfile.init();
+            }
+
             // 预加载：登录后立即缓存报价列表（后台静默进行）
             if (currentUser) {
                 loadHistoryFromCloud().then(cloudHistory => {
@@ -7468,6 +7670,590 @@ const SQAnnounce = (function () {
   });
 
   return { init: init, refresh: init, openList: openList };
+})();
+
+/* ==========================================================================
+ * 客户画像弹窗（2026-11-07）
+ *
+ * 目的：业务员在报价单里点「客户画像」→ 弹窗里看这位客户在 OrderFile
+ *      的信息流（历史沟通 / 客户画像标签），并能就地补一条信息。
+ *
+ * 架构：SD 前端**直接调 OrderFile 的 GAS**（跨域已开放 CORS *），
+ *      不经过 SD 后端转发 —— SD GAS 部署源本身有版本漂移风险，能不动就不动；
+ *      OrderFile 的鉴权 / 幂等 / 可见性规则全部原样生效，不重复实现。
+ *
+ * 「自动登入 OrderFile」：
+ *   报价系统和 OrderFile 读的是**同一份** users.json（都在 Squirrel Designer/admin/）。
+ *   报价系统登录后前端手里已有 username + password（performLogin 里存在 currentUser.password），
+ *   直接拿去调 OrderFile 的 login 就能拿到 roles —— **不需要改任何后端**。
+ *
+ * ⚠ 建档策略（用户拍板）：先用 peekOrder **只读探测**。
+ *    档案不存在 → 显示「尚未建立信息流」+「创建信息流」按钮，
+ *    建档必须是用户的**显式动作**。
+ *    绝不能直接调 getOrder —— 它在档案不存在时会自动建档并写盘，
+ *    业务员「点开看一眼」就凭空造出空档案（历史幽灵单来源）。
+ * ========================================================================== */
+const SQProfile = (function () {
+  const OF_GAS_URL = 'https://script.google.com/macros/s/AKfycbzuwbRRD060rqlNQl8kqt-uLL5W8zbPiyQH4WEKKMk_-EnOmbWmSG7O1AVim99HfsVB6g/exec';
+  const ORDERFILE_SITE = 'https://ongsami-create.github.io/orderfile/';
+  const SESSION_KEY = 'sq_profile_session';
+  const SESSION_TTL = 24 * 60 * 60 * 1000;   // 与报价系统自身 24h 会话对齐
+  const API_TIMEOUT = 30000;
+
+  /* ⚠ 写操作集合：超时**绝不自动重试**（OrderFile 的教训）。
+   *    超时 ≠ 服务器没执行 → 重发会写两遍 → 时间轴出现两条一样的。
+   *    写操作靠 clientRequestId 幂等键兜底。 */
+  const WRITE_ACTIONS = ['submitInfo', 'markRead', 'saveProfile', 'toggleTodo'];
+
+  /**
+   * 部门 → OrderFile 角色
+   * ⚠ 与 OrderFile 后端 Code.gs 的 DEPT_ROLE_MAP 保持一致（改一边必须改另一边）
+   *    - designer → design（主系统叫 designer，OrderFile 叫 design）
+   *    - orderClerk → order（2026-10-18 确认的实际叫法），order 是兼容别名
+   */
+  const DEPT_ROLE_MAP = {
+    admin: 'admin',
+    sales: 'sales',
+    designer: 'design',
+    install: 'install',
+    orderClerk: 'order',
+    order: 'order',
+    logistics: 'logistics'
+  };
+
+  let session = null;    // OrderFile 身份 {username, displayName, roles[], role, at}
+  let mask = null;       // 当前弹窗 DOM
+  let busy = false;      // 提交锁，防连点（OrderFile 2026-11-03 修过同样的 bug）
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* ---------------- 角色映射（纯函数，方便单测） ---------------- */
+
+  /**
+   * 账号 → OrderFile 角色
+   * 规则：部门逐个映射；admin 优先；一个都没有 → 兜底 sales（与 OrderFile 同款）
+   */
+  function roleOf(user) {
+    const depts = (user && user.departments) || [];
+    const roles = [];
+    for (let i = 0; i < depts.length; i++) {
+      const r = DEPT_ROLE_MAP[String(depts[i] || '').trim()];
+      if (r && roles.indexOf(r) < 0) roles.push(r);
+    }
+    if (!roles.length) roles.push('sales');
+    return roles.indexOf('admin') >= 0 ? 'admin' : roles[0];
+  }
+
+  /* ---------------- 会话存取 ---------------- */
+
+  function readSession() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (!s || !s.username) return null;
+      if (Date.now() - (s.at || 0) > SESSION_TTL) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function writeSession(s) {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {}
+  }
+
+  /* ---------------- OrderFile API 封装 ---------------- */
+
+  function ofApi(action, params, timeoutMs) {
+    const limit = timeoutMs || API_TIMEOUT;
+    const payload = Object.assign({ action: action }, params || {});
+    const body = Object.keys(payload).map(function (k) {
+      const v = payload[k];
+      if (v === undefined || v === null) return '';
+      return encodeURIComponent(k) + '=' + encodeURIComponent(typeof v === 'object' ? JSON.stringify(v) : String(v));
+    }).join('&');
+
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, limit);
+    const opts = { method: 'POST', body: body, credentials: 'omit' };
+    if (ctrl) opts.signal = ctrl.signal;
+
+    return fetch(OF_GAS_URL, opts).then(function (r) {
+      return r.json();
+    }).then(function (j) {
+      if (!j || j.ok === false) {
+        const err = new Error((j && j.error) || '请求失败');
+        err.payload = j;
+        throw err;
+      }
+      return j;
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') {
+        const err = new Error('服务器太慢，这次操作可能已经存进去了 —— 刷新看看，别重复提交。');
+        err.slow = true;
+        err.mayHaveSucceeded = true;
+        throw err;
+      }
+      throw e;
+    }).finally(function () { clearTimeout(timer); });
+  }
+
+  /* ---------------- 轻提示 ---------------- */
+
+  function profileToast(msg, isErr) {
+    let box = document.getElementById('sqProfileToast');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'sqProfileToast';
+      box.className = 'sq-profile-toast';
+      document.body.appendChild(box);
+    }
+    box.textContent = msg;
+    box.className = 'sq-profile-toast show' + (isErr ? ' err' : '');
+    clearTimeout(box._t);
+    box._t = setTimeout(function () { box.className = 'sq-profile-toast'; }, 3600);
+  }
+
+  /* ---------------- 按钮绑定 ---------------- */
+
+  /**
+   * 绑定「客户画像」按钮
+   * ⚠ init() 会被调用多次（登录 + 自动登录），所以事件用**委托**挂在 document 上，
+   *   且用标记位防止重复绑定 → 不会重复触发。
+   */
+  function bindButton() {
+    if (typeof document === 'undefined') return;
+    if (!document._sqProfileBound) {
+      document._sqProfileBound = true;
+      document.addEventListener('click', function (e) {
+        const btn = e.target && e.target.closest ? e.target.closest('#btnCustomerProfile') : null;
+        if (!btn) return;
+        const el = document.getElementById('projNo');
+        open(el ? el.value : '');
+      });
+      // Proj No 变了 → 按钮置灰状态跟着变（编辑旧报价时 projNo 是后填的）
+      document.addEventListener('input', function (e) {
+        if (e.target && e.target.id === 'projNo') syncButtonState();
+      });
+    }
+    syncButtonState();
+  }
+
+  /** Proj No 为空 → 按钮置灰（点了也只是提示，不该让人以为有内容） */
+  function syncButtonState() {
+    const btn = document.getElementById('btnCustomerProfile');
+    const el = document.getElementById('projNo');
+    if (!btn || !el) return;
+    btn.disabled = !String(el.value || '').trim();
+  }
+
+  /* ---------------- 自动登入 OrderFile ---------------- */
+
+  /**
+   * 报价系统登录后调一次 → 拿 OrderFile 的角色
+   * ⚠ 失败**绝不影响**报价系统正常使用 → 静默失败即可
+   */
+  async function init() {
+    // ⚠ 先绑按钮 —— 不依赖登录态（万一 init 因任何原因没跑到，
+    //   模块末尾还有一道自启动兜底，按钮照样能用）
+    bindButton();
+
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.username) return;
+
+    const cached = readSession();
+    if (cached && cached.username === currentUser.username) {
+      session = cached;
+      return;
+    }
+
+    try {
+      const r = await ofApi('login', {
+        username: currentUser.username,
+        password: currentUser.password || ''
+      });
+      session = {
+        username: r.username || currentUser.username,
+        displayName: r.displayName || '',
+        roles: r.roles || [],
+        role: roleOf(currentUser),
+        at: Date.now()
+      };
+      // ⚠ 只存 username/roles/role，**绝不存密码**
+      writeSession(session);
+    } catch (e) {
+      console.warn('[SQProfile] 自动登入 OrderFile 失败:', e.message);
+      session = null;
+    }
+  }
+
+  /* ---------------- 弹窗骨架 ---------------- */
+
+  function closeModal() {
+    if (mask) { mask.remove(); mask = null; }
+    busy = false;
+  }
+
+  function showModal(title, meta, bodyHtml, footHtml) {
+    closeModal();
+    const m = document.createElement('div');
+    m.className = 'sq-modal-mask';
+    m.innerHTML =
+      '<div class="sq-modal sq-profile-modal">' +
+        '<div class="sq-modal-head">' +
+          '<div class="sq-modal-title">' + esc(title) + '</div>' +
+          '<div class="sq-modal-meta">' + meta + '</div>' +
+        '</div>' +
+        '<div class="sq-modal-body" id="sqProfileBody">' + bodyHtml + '</div>' +
+        '<div class="sq-modal-foot">' + (footHtml || '') + '</div>' +
+      '</div>';
+    m.onclick = function (e) {
+      if (e.target === m || e.target.dataset.close !== undefined) { closeModal(); return; }
+    };
+    document.body.appendChild(m);
+    mask = m;
+    return m;
+  }
+
+  function bodyEl() { return document.getElementById('sqProfileBody'); }
+
+  function setBody(html) { const b = bodyEl(); if (b) b.innerHTML = html; }
+
+  /* ---------------- 渲染：客户资料 + 画像 + 时间轴 ---------------- */
+
+  function fmtTime(iso) {
+    const s = String(iso || '');
+    if (!s) return '';
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s.slice(0, 16).replace('T', ' ');
+    const p = function (n) { return n < 10 ? '0' + n : String(n); };
+    const now = new Date();
+    const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    if (sameDay) return '今天 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function profileChipsHtml(arch) {
+    const pr = (arch && arch.profile) || {};
+    const chips = Array.isArray(pr.chips) ? pr.chips : [];
+    const prefs = Array.isArray(pr.contactPrefs) ? pr.contactPrefs : (pr.contactPref ? [pr.contactPref] : []);
+    const all = chips.concat(prefs);
+    if (!all.length) {
+      return '<div class="sq-profile-empty-inline">还没记客户画像</div>';
+    }
+    let h = '<div class="sq-profile-chips">';
+    for (let i = 0; i < chips.length; i++) h += '<span class="sq-profile-chip">' + esc(chips[i]) + '</span>';
+    for (let i = 0; i < prefs.length; i++) h += '<span class="sq-profile-chip pref">' + esc(prefs[i]) + '</span>';
+    h += '</div>';
+    if (pr.note) h += '<div class="sq-profile-note">' + esc(pr.note) + '</div>';
+    return h;
+  }
+
+  function orderHeaderHtml(arch) {
+    const rows = [];
+    const kv = function (k, v) {
+      if (v === undefined || v === null || v === '') return;
+      rows.push('<div class="sq-profile-kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span></div>');
+    };
+    kv('电话', arch.customerContact);
+    kv('地址', arch.customerAddress);
+    kv('业务员', arch.salesName);
+    kv('业务员电话', arch.salesPhone);
+    const ps = Array.isArray(arch.participants) ? arch.participants : [];
+    if (ps.length) kv('参与', ps.join('、'));
+    if (!rows.length) return '';
+    return '<div class="sq-profile-kvwrap">' + rows.join('') + '</div>';
+  }
+
+  function timelineHtml(arch) {
+    const evs = (arch.events || []).filter(function (e) { return e && !e.deleted; });
+    if (!evs.length) {
+      return '<div class="sq-profile-empty">还没有任何记录。点下面「添加信息」写下第一条。</div>';
+    }
+    // 最新的排前面（跟 OrderFile 站内一致）
+    const list = evs.slice().reverse();
+    let h = '<div class="sq-profile-tl">';
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      const mine = session && e.author === session.username;
+      h += '<div class="sq-profile-tli' + (mine ? ' mine' : '') + '">';
+      h += '<div class="sq-profile-tli-h">';
+      h += '<b>' + esc(e.author || '') + '</b>';
+      if (e.type) h += '<span class="sq-profile-tag t">' + esc(e.type) + '</span>';
+      const rc = e.replyChips || (e.replyChip ? [e.replyChip] : []);
+      for (let k = 0; k < rc.length; k++) h += '<span class="sq-profile-tag r">' + esc(rc[k]) + '</span>';
+      h += '<span class="sq-profile-tli-time">' + esc(fmtTime(e.at)) + '</span>';
+      h += '</div>';
+      if (e.content) h += '<div class="sq-profile-tli-c">' + esc(e.content) + '</div>';
+      const todos = e.todos || [];
+      if (todos.length) {
+        h += '<ul class="sq-profile-todos">';
+        for (let k = 0; k < todos.length; k++) {
+          h += '<li class="' + (todos[k].done ? 'done' : '') + '"><span class="box"></span><span>' + esc(todos[k].text) + '</span></li>';
+        }
+        h += '</ul>';
+      }
+      if (e.assignTo) h += '<div class="sq-profile-tli-a">🔔 提醒 ' + esc(e.assignTo) + ' 跟进</div>';
+      if (e.markDone) h += '<div class="sq-profile-tli-a">✓ 已标记完成</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function renderOrder(arch) {
+    const evs = (arch.events || []).filter(function (e) { return e && !e.deleted; });
+    const status = arch.done
+      ? '<span class="sq-profile-status done">已完成</span>'
+      : '<span class="sq-profile-status todo">待处理</span>';
+    const meta = '<span>' + status + '</span><span>共 ' + evs.length + ' 条记录</span>' +
+      (session ? '<span>👤 ' + esc(session.displayName || session.username) + '（' + esc(session.role) + '）</span>' : '');
+
+    const body =
+      '<div class="sq-profile-hero">' +
+        '<div class="no">' + esc(arch.projNo || '') + '</div>' +
+        '<div class="nm">' + esc(arch.customerName || '（未填客户名）') + '</div>' +
+      '</div>' +
+      orderHeaderHtml(arch) +
+      '<div class="sq-profile-section">客户画像</div>' + profileChipsHtml(arch) +
+      '<div class="sq-profile-section">信息流</div>' + timelineHtml(arch);
+
+    const foot =
+      '<button class="sq-modal-btn primary" data-add>＋ 添加信息</button>' +
+      '<button class="sq-modal-btn" data-create hidden>＋ 创建信息流</button>' +
+      '<button class="sq-modal-btn" data-open-order>↗ 在 OrderFile 打开</button>' +
+      '<button class="sq-modal-btn" data-close>关闭</button>';
+
+    showModal('客户画像 · ' + (arch.projNo || ''), meta, body, foot);
+    bindFoot();
+  }
+
+  function renderEmpty(projNo) {
+    const meta = '<span>这个客户还没有信息流</span>';
+    const body =
+      '<div class="sq-profile-hero">' +
+        '<div class="no">' + esc(projNo) + '</div>' +
+        '<div class="nm">尚未建立信息流</div>' +
+      '</div>' +
+      '<div class="sq-profile-empty">' +
+        '这位客户在 OrderFile 还没有建过档。<br>' +
+        '点下面「创建信息流」会按当前报价的客户资料建一张档案 —— 建档之后，' +
+        '设计、下单、安装那边的沟通记录都会汇到这一条时间轴上。' +
+      '</div>';
+    const foot =
+      '<button class="sq-modal-btn primary" data-create>＋ 创建信息流</button>' +
+      '<button class="sq-modal-btn" data-close>关闭</button>';
+    showModal('客户画像 · ' + projNo, meta, body, foot);
+    bindFoot();
+  }
+
+  function renderError(msg) {
+    showModal('客户画像', '<span>读取失败</span>',
+      '<div class="sq-profile-empty err">' + esc(msg || '读不出来，请稍后再试') + '</div>',
+      '<button class="sq-modal-btn" data-close>关闭</button>');
+    bindFoot();
+  }
+
+  function renderLoading(projNo) {
+    showModal('客户画像 · ' + projNo, '<span>读取中…</span>',
+      '<div class="sq-profile-empty">正在读取信息流…</div>', '');
+  }
+
+  /* ---------------- 底部按钮 ---------------- */
+
+  function bindFoot() {
+    if (!mask) return;
+    const foot = mask.querySelector('.sq-modal-foot');
+    if (!foot) return;
+
+    const addBtn = foot.querySelector('[data-add]');
+    if (addBtn) addBtn.onclick = function () { openCompose(); };
+
+    const createBtn = foot.querySelector('[data-create]');
+    if (createBtn) createBtn.onclick = function () { openCreate(); };
+
+    const openBtn = foot.querySelector('[data-open-order]');
+    if (openBtn) openBtn.onclick = function () { window.open(ORDERFILE_SITE, '_blank'); };
+  }
+
+  /* ---------------- 添加信息 / 创建信息流 ---------------- */
+
+  function composeHtml(title, btnLabel, withType) {
+    return '<div class="sq-profile-compose">' +
+      '<div class="sq-profile-compose-title">' + esc(title) + '</div>' +
+      '<textarea id="sqProfileInput" class="sq-profile-textarea" rows="4" ' +
+        'placeholder="写点什么…（可以留空）"></textarea>' +
+      (withType
+        ? '<select id="sqProfileType" class="sq-profile-select"><option value="">类型（默认「沟通」）</option></select>'
+        : '') +
+      '<div class="sq-profile-compose-actions">' +
+        '<button class="sq-modal-btn primary" id="sqProfileSubmit">' + esc(btnLabel) + '</button>' +
+        '<button class="sq-modal-btn" id="sqProfileCancel">取消</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function openCompose() {
+    const b = bodyEl();
+    if (!b) return;
+    const arch = state_arch;
+    if (!arch) return;
+    b.innerHTML = composeHtml('添加信息', '提交', true);
+    const submit = document.getElementById('sqProfileSubmit');
+    if (submit) submit.onclick = function () { doSubmit(arch.projNo, false); };
+    const cancel = document.getElementById('sqProfileCancel');
+    if (cancel) cancel.onclick = function () { renderOrder(arch); };
+  }
+
+  function openCreate() {
+    const b = bodyEl();
+    if (!b) return;
+    b.innerHTML = composeHtml('创建信息流', '创建', false);
+    const submit = document.getElementById('sqProfileSubmit');
+    if (submit) submit.onclick = function () { doSubmit(state_projNo, true); };
+    const cancel = document.getElementById('sqProfileCancel');
+    if (cancel) cancel.onclick = function () { renderEmpty(state_projNo); };
+  }
+
+  /** 当前打开的档案（渲染用） */
+  let state_arch = null;
+  let state_projNo = '';
+
+  function newRequestId_() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {}
+    return 'rq-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  /**
+   * 提交一条信息（追加到已有档案 / 建档）
+   * ⚠ clientRequestId 幂等键 → 超时重发或用户再点一次，后端认得出「同一次」
+   * ⚠ 写操作超时不自动重试（WRITE_ACTIONS）
+   */
+  async function doSubmit(projNo, isCreate) {
+    if (busy) return;
+    const input = document.getElementById('sqProfileInput');
+    const typeEl = document.getElementById('sqProfileType');
+    const content = input ? String(input.value || '').trim() : '';
+    const type = typeEl && typeEl.value ? String(typeEl.value) : '沟通';
+
+    busy = true;
+    const btn = document.getElementById('sqProfileSubmit');
+    if (btn) { btn.disabled = true; btn.textContent = isCreate ? '创建中…' : '提交中…'; }
+
+    const params = {
+      projNo: projNo,
+      username: session.username,
+      role: session.role,
+      content: content,
+      type: type,
+      clientRequestId: newRequestId_()
+    };
+    if (isCreate) {
+      // 从报价建档 → 后端顺手导入客户资料 + 初始画像
+      params.standalone = 'false';
+      params.quoteOwner = (typeof currentUser !== 'undefined' && currentUser && currentUser.displayName) || '';
+    }
+
+    try {
+      const r = await ofApi('submitInfo', params, 60000);
+      busy = false;
+      if (r && r.order) {
+        state_arch = r.order;
+        state_projNo = r.order.projNo || projNo;
+        renderOrder(r.order);
+        profileToast(isCreate ? '信息流已建立' : '已添加');
+      } else {
+        busy = false;
+        profileToast('提交了，但没拿到档案 —— 刷新看看', true);
+      }
+    } catch (e) {
+      busy = false;
+      const btn2 = document.getElementById('sqProfileSubmit');
+      if (btn2) { btn2.disabled = false; btn2.textContent = isCreate ? '创建' : '提交'; }
+      profileToast(e.message || '提交失败', true);
+    }
+  }
+
+  /* ---------------- 打开弹窗（主入口） ---------------- */
+
+  async function open(projNo) {
+    const pno = String(projNo || '').trim();
+    if (!pno) {
+      profileToast('请先填写 Proj No', true);
+      return;
+    }
+    state_projNo = pno;
+    state_arch = null;
+
+    if (!session) {
+      await init();
+      if (!session) {
+        profileToast('暂时连不上 OrderFile，请稍后再试', true);
+        return;
+      }
+    }
+
+    renderLoading(pno);
+
+    // ① 只读探测 —— 绝不能跳过这步直接调 getOrder（它会自动建档写盘）
+    let peek;
+    try {
+      peek = await ofApi('peekOrder', { projNo: pno });
+    } catch (e) {
+      renderError(e.message || '读不出来，请稍后再试');
+      return;
+    }
+    if (!peek || !peek.ok) {
+      renderError((peek && peek.error) || '读不出来，请稍后再试');
+      return;
+    }
+    if (!peek.exists) {
+      renderEmpty(pno);
+      return;
+    }
+
+    // ② 档案确实存在 → 读完整档案
+    try {
+      const r = await ofApi('getOrder', {
+        projNo: pno,
+        username: session.username,
+        role: session.role
+      });
+      if (!r || !r.order) { renderError('打不开这张单'); return; }
+      state_arch = r.order;
+      state_projNo = r.order.projNo || pno;
+      renderOrder(r.order);
+      // 顺手标记已读（fire-and-forget，失败无所谓）
+      try { ofApi('markRead', { projNo: pno, username: session.username }).catch(function () {}); }
+      catch (e) {}
+    } catch (e) {
+      renderError(e.message || '打不开这张单');
+    }
+  }
+
+  return {
+    init: init,
+    open: open,
+    // 暴露给单测
+    _roleOf: roleOf,
+    _ofApi: ofApi,
+    _readSession: readSession,
+    _writeSession: writeSession
+  };
+})();
+
+/* 兜底自启动：DOM 已就绪就立刻绑按钮，否则等 DOMContentLoaded。
+   （showMainContent 里也会调 init()，这里只是保险 —— 按钮不该依赖登录流程才生效） */
+(function () {
+  if (typeof document === 'undefined') return;
+  const boot = function () { try { SQProfile.init(); } catch (e) { /* 静默 */ } };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 })();
 </script>
 </body>
