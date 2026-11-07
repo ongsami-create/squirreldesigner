@@ -23,3 +23,7 @@ Thumbs.db
 # 编辑器
 .vscode/
 .idea/
+
+# ✅ 2026-11-07：本地回归测试脚本（依赖 gitignore 掉的 .gs 源码，不发布）
+_test_*.js
+_style_temp_backup/
