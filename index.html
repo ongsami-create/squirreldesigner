@@ -3110,7 +3110,13 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
 
             // Otherwise add as new
             if (editingQuoteId) {
-                const idx = history.findIndex(h => h.id === editingQuoteId);
+                // ✅ 2026-11-07：优先按 projNo 找；id 只有在**唯一**时才用
+                //    改名后多份报价可能共用同一个 id，按 id 找会覆盖到另一份报价上
+                let idx = history.findIndex(h => (h.projNo || '') === (projNo || ''));
+                if (idx < 0) {
+                    const sameId = history.filter(h => h.id != null && String(h.id) === String(editingQuoteId));
+                    if (sameId.length === 1) idx = history.indexOf(sameId[0]);
+                }
                 if (idx >= 0) history[idx] = quote;
                 else history.unshift(quote);
 
@@ -3126,14 +3132,17 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
         }
         
         // Delete quote from history
-        function deleteQuote(id, event) {
+        // ⚠️ 2026-11-07：目前没有调用点（删除走 confirmDeleteQuote → deleteQuoteFromCloud）。
+        //    万一以后接回去，注意 id 可能重复（改名后多份报价共用 id）→ 必须按 projNo 删。
+        function deleteQuote(key, event) {
             event.stopPropagation();
             if (!confirm('Delete this quote from history?')) return;
+            const target = _findQuote_(key);
             let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-            history = history.filter(h => h.id !== id);
+            history = history.filter(h => target ? ((h.projNo || '') !== target.projNo) : (h.id !== key));
             safeSetLocalStorage('quoteHistory', JSON.stringify(history));
             loadHistory();
-            if (editingQuoteId === id) editingQuoteId = null;
+            if (target && editingQuoteId === target.id) editingQuoteId = null;
         }
 
         // ✅ 2026-10-27：安全的 localStorage 写入
@@ -3257,58 +3266,65 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             return [];
         }
         
-        async function loadFullQuoteFromCloud(idOrProjNo) {
+        async function loadFullQuoteFromCloud(key) {
             if (!currentUser) return null;
 
-            // ✅ 2026-09-15：第三层兜底 - localStorage cache (key: quote_full_<projNo>)
-            // 先尝试从缓存读，避免 GAS 抽风时拿不到 quote
+            // ✅ 2026-11-07：唯一键 = projNo（id 可能重复 —— 改名后多份报价共用同一个 id）
+            const cached = _findQuote_(key);
+            const projNo = cached ? (cached.projNo || key) : key;
+
+            // ① 本地缓存兜底（云端抽风时用）
+            //    ⚠️ 必须校验「版本戳」：云端文件改过（改名 / 从回收站恢复 / 别的设备保存）后，
+            //    缓存里还是旧内容 —— 用户 2026-11-07 实测「点 VSD01 却显示 13KB 那份」。
+            //    戳对不上就当缓存作废，重新拉云端。
             try {
-                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
-                const projNo = cached ? cached.projNo : idOrProjNo;
                 if (projNo) {
-                    const localCacheKey = `quote_full_${currentUser.username}_${projNo}`;
+                    const meta = _findQuote_(projNo);
+                    const stamp = _quoteStamp_(meta);
+                    const localCacheKey = _quoteCacheKey_(projNo);
                     const localCache = localStorage.getItem(localCacheKey);
                     if (localCache) {
                         try {
                             const parsedQuote = JSON.parse(localCache);
-                            // 如果 cache 还新鲜（<24h），优先使用
+                            // cache 还新鲜（<24h）**且** 版本戳对得上 → 才用缓存
                             const cacheTime = localStorage.getItem(localCacheKey + '_time');
                             const ageMs = cacheTime ? Date.now() - parseInt(cacheTime, 10) : Infinity;
-                            if (ageMs < 24 * 60 * 60 * 1000) {
+                            const cachedStamp = localStorage.getItem(localCacheKey + '_stamp');
+                            // ✅ 2026-11-07：缓存里的内容必须**就是**这份报价
+                            //    改名后同一个 key 可能串着另一份报价的内容（projNo 对不上 → 作废）
+                            const cachedProjNo = parsedQuote.projNo || '';
+                            const sameQuote = !cachedProjNo || cachedProjNo === projNo;
+                            if (ageMs < 24 * 60 * 60 * 1000 && stamp && cachedStamp === stamp && sameQuote) {
                                 console.log(`Using local quote cache for ${projNo} (age: ${Math.round(ageMs / 60000)}min)`);
                                 return parsedQuote;
                             }
+                            console.log('Local cache stale (cloud changed) → refetch:', projNo);
                         } catch (e) {}
                     }
                 }
             } catch (e) {}
 
             try {
-                // ✅ 2026-08-13 优化 P2：cache 命中时 1 次 API
-                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
-                if (cached && cached.projNo) {
-                    const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(cached.projNo));
+                // ② 直接按 projNo 拉（1 次 API）
+                const targetProjNo = (cached && cached.projNo) || projNo;
+                if (targetProjNo) {
+                    const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(targetProjNo));
                     const fullResult = await fullResponse.json();
                     if (fullResult.success && fullResult.quote) {
                         const quote = fullResult.quote;
                         if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
                         if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
                         if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
-                        // ✅ 2026-09-15：成功加载后写 localStorage 缓存
-                        try {
-                            const key = `quote_full_${currentUser.username}_${cached.projNo}`;
-                            localStorage.setItem(key, JSON.stringify(quote));
-                            localStorage.setItem(key + '_time', Date.now().toString());
-                        } catch (e) {}
+                        _cacheQuote_(targetProjNo, quote);
                         return quote;
                     }
                 }
 
-                // Fallback：cache miss 调 2 次 (getQuoteList + getQuote)
+                // ③ Fallback：cache miss 调 2 次 (getQuoteList + getQuote)
                 const response = await fetch(GAS_URL + '?action=getQuoteList&username=' + encodeURIComponent(currentUser.username));
                 const result = await response.json();
                 if (result.success && result.quotes) {
-                    const cloudQuote = result.quotes.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
+                    const cloudQuote = _findQuoteIn_(result.quotes, key);
                     if (cloudQuote && cloudQuote.projNo) {
                         const fullResponse = await fetch(GAS_URL + '?action=getQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(cloudQuote.projNo));
                         const fullResult = await fullResponse.json();
@@ -3317,12 +3333,7 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
                             if (!quote.hasOwnProperty('designerName')) quote.designerName = '';
                             if (!quote.hasOwnProperty('subSalesperson')) quote.subSalesperson = '';
                             if (!quote.hasOwnProperty('measurementEngineer')) quote.measurementEngineer = '';
-                            // 写缓存
-                            try {
-                                const key = `quote_full_${currentUser.username}_${cloudQuote.projNo}`;
-                                localStorage.setItem(key, JSON.stringify(quote));
-                                localStorage.setItem(key + '_time', Date.now().toString());
-                            } catch (e) {}
+                            _cacheQuote_(cloudQuote.projNo, quote);
                             return quote;
                         }
                     }
@@ -3330,13 +3341,10 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             } catch (error) {
                 console.error('Load full quote from cloud error:', error);
             }
-            // ✅ 2026-09-15：所有 GAS 路径都失败，再尝试一次 localStorage（无论新旧）
+            // ④ 所有 GAS 路径都失败，再尝试一次 localStorage（无论新旧，总比没有强）
             try {
-                const cached = quoteHistory.find(q => q.id == idOrProjNo || q.projNo == idOrProjNo);
-                const projNo = cached ? cached.projNo : idOrProjNo;
                 if (projNo) {
-                    const localCacheKey = `quote_full_${currentUser.username}_${projNo}`;
-                    const localCache = localStorage.getItem(localCacheKey);
+                    const localCache = localStorage.getItem(_quoteCacheKey_(projNo));
                     if (localCache) {
                         console.warn(`GAS failed but found local cache for ${projNo}`);
                         return JSON.parse(localCache);
@@ -3345,7 +3353,55 @@ function handleExceedMode(dimValue, limit, mode, unitPrice, w, h, item) {
             } catch (e) {}
             return null;
         }
-function renderHistoryList(searchTerm = '') {
+        // ✅ 2026-11-07：报价的唯一键 = projNo（不再是 id）
+        // 背景：quote.id 是「首次创建时间戳」，改名不会变。用户把 VSD01 改名成 VSD01-1 后，
+        //      两个 Drive 文件共用同一个 id（1793870723769）→ 历史列表里两张卡片生成的是
+        //      同一个 loadQuote(1793870723769) → find() 取到排序靠前的那条 →
+        //      点 VSD01（RM310000）却打开 VSD01-1（RM0）——用户 2026-11-07 实测。
+        //      下单 / 佣金50 / 佣金100 / 删除 也全都按 id 找 → 同样作用到错误的那份。
+        // projNo = Drive 文件名 <projNo>.json，天然唯一 → 改用它当主键。
+        function _findQuoteIn_(list, key) {
+            const k = String(key == null ? '' : key);
+            if (!k || !list) return null;
+            // ① 先按 projNo 精确匹配（唯一）
+            const byProjNo = list.find(q => (q.projNo || '') === k);
+            if (byProjNo) return byProjNo;
+            // ② 再按 id 匹配（老数据 / 没有 projNo 的）
+            return list.find(q => q.id != null && String(q.id) === k) || null;
+        }
+        function _findQuote_(key) {
+            return _findQuoteIn_(quoteHistory, key);
+        }
+
+        // 把 key 安全地嵌进 onclick 属性（双引号属性 + encodeURIComponent 转义）
+        function _keyAttr_(quote) {
+            return encodeURIComponent(quote.projNo || quote.id || '');
+        }
+
+        // ✅ 2026-11-07：本地整份报价缓存的「版本戳」
+        // 缓存 key = quote_full_<user>_<projNo>_v2（带 _v2 → 旧的同名缓存自动作废）
+        // 戳 = 元数据的 lastSynced|lastModified（来自 getQuoteList）
+        // 云端文件一改（改名 / 从回收站恢复 / 别的设备保存）戳就对不上 → 缓存作废重拉。
+        // 少了这一步：用户恢复 95KB 的 VSD01 后，本地还缓存着 13KB 那份（24h 内），
+        // 点 VSD01 照样显示旧的 13KB 内容 —— 2026-11-07 用户实测。
+        function _quoteCacheKey_(projNo) {
+            return `quote_full_${currentUser.username}_${projNo}_v2`;
+        }
+        function _quoteStamp_(meta) {
+            if (!meta) return '';
+            return (meta.lastSynced || '') + '|' + (meta.lastModified || '');
+        }
+        function _cacheQuote_(projNo, quote) {
+            try {
+                const key = _quoteCacheKey_(projNo);
+                const meta = _findQuote_(projNo);
+                localStorage.setItem(key, JSON.stringify(quote));
+                localStorage.setItem(key + '_time', Date.now().toString());
+                localStorage.setItem(key + '_stamp', _quoteStamp_(meta));
+            } catch (e) {}
+        }
+
+        function renderHistoryList(searchTerm = '') {
             const list = document.getElementById('historyList');
             const filtered = quoteHistory.filter(q => 
                 (q.projNo && q.projNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -3381,7 +3437,7 @@ function renderHistoryList(searchTerm = '') {
                     syncTimeDisplay = syncDate.getFullYear() + '-' + pad(syncDate.getMonth()+1) + '-' + pad(syncDate.getDate()) + ' ' + pad(syncDate.getHours()) + ':' + pad(syncDate.getMinutes()) + ':' + pad(syncDate.getSeconds());
                 }
                 return `
-                <div class="history-item ${quote.status === 'completed' ? 'completed-quote' : ''}" onclick="loadQuote(${quote.id})">
+                <div class="history-item ${quote.status === 'completed' ? 'completed-quote' : ''}" onclick="loadQuote(decodeURIComponent('${_keyAttr_(quote)}'))">
                     <div class="history-date">Date: ${quote.date} | Proj No: ${quote.projNo || '-'} ${badgesHtml}</div>
                     <div class="history-customer">${quote.customerName}</div>
                     <div class="history-info" style="font-size:11px;color:#666;margin-top:4px;">
@@ -3393,19 +3449,19 @@ function renderHistoryList(searchTerm = '') {
                     <div class="history-total">RM ${(quote.total || 0).toFixed(2)}</div>
                     ${syncTimeDisplay ? `<div style="font-size:10px;color:#888;margin-top:3px;">Synced: ${syncTimeDisplay}</div>` : ''}
                     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                        <button class="history-action-btn share" onclick="event.stopPropagation(); promptShareQuote('${quote.projNo || quote.id}')">分享</button>
-                        ${quote.status !== 'completed' ? `<button class="history-action-btn complete" onclick="event.stopPropagation(); promptCompleteQuote(${quote.id})">下单</button>` : ''}
-                        <button class="history-action-btn commission" onclick="event.stopPropagation(); promptCommission50(${quote.id})" ${quote.commission50Marked ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>佣金50</button>
-                        <button class="history-action-btn commission" onclick="event.stopPropagation(); promptCommission100(${quote.id})" ${!quote.commission50Marked || quote.commission100Marked ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>佣金100</button>
-                        <button class="history-action-btn delete" onclick="event.stopPropagation(); confirmDeleteQuote(${quote.id})">删除</button>
+                        <button class="history-action-btn share" onclick="event.stopPropagation(); promptShareQuote(decodeURIComponent('${_keyAttr_(quote)}'))">分享</button>
+                        ${quote.status !== 'completed' ? `<button class="history-action-btn complete" onclick="event.stopPropagation(); promptCompleteQuote(decodeURIComponent('${_keyAttr_(quote)}'))">下单</button>` : ''}
+                        <button class="history-action-btn commission" onclick="event.stopPropagation(); promptCommission50(decodeURIComponent('${_keyAttr_(quote)}'))" ${quote.commission50Marked ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>佣金50</button>
+                        <button class="history-action-btn commission" onclick="event.stopPropagation(); promptCommission100(decodeURIComponent('${_keyAttr_(quote)}'))" ${!quote.commission50Marked || quote.commission100Marked ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>佣金100</button>
+                        <button class="history-action-btn delete" onclick="event.stopPropagation(); confirmDeleteQuote(decodeURIComponent('${_keyAttr_(quote)}'))">删除</button>
                     </div>
                 </div>
             `}).join('');
          }
          
-         function confirmDeleteQuote(id) {
-            // Find the quote by id or projNo
-            const quote = quoteHistory.find(q => q.id === id || q.projNo === id);
+         function confirmDeleteQuote(key) {
+            // ✅ 2026-11-07：按 projNo 找（id 可能重复 → 会删错那份）
+            const quote = _findQuote_(key);
             if (!quote) {
                 alert('Quote not found');
                 return;
@@ -3413,16 +3469,16 @@ function renderHistoryList(searchTerm = '') {
             const password = prompt('Enter your password to delete this quote:');
             if (!password) return;
             if (password === currentUser.password) {
-                deleteQuoteFromCloud(quote.id || quote.projNo, quote);
+                deleteQuoteFromCloud(quote.projNo || quote.id, quote);
             } else {
                 alert('Incorrect password!');
             }
          }
-         
-         async function deleteQuoteFromCloud(id, quote) {
+
+         async function deleteQuoteFromCloud(key, quote) {
             try {
                 // Use projNo for cloud delete (this is what GAS uses)
-                const projNo = quote.projNo || quote.id;
+                const projNo = quote.projNo || key;
                 if (currentUser && projNo) {
                     const response = await fetch(GAS_URL + '?action=deleteQuote&username=' + encodeURIComponent(currentUser.username) + '&projNo=' + encodeURIComponent(projNo));
                     const result = await response.json();
@@ -3431,9 +3487,10 @@ function renderHistoryList(searchTerm = '') {
                         return;
                     }
                 }
-                // Delete from local history by id
+                // ✅ 2026-11-07：本地只按 projNo 删
+                //    以前还按 id 删 → 同一个 id 的另一份报价（改名后）会被一起从历史里抹掉
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                history = history.filter(h => h.id !== id && h.projNo !== projNo);
+                history = history.filter(h => projNo ? ((h.projNo || '') !== projNo) : (h.id !== key));
                 safeSetLocalStorage('quoteHistory', JSON.stringify(history));
                 quoteHistory = history;
                 renderHistoryList();
@@ -3444,20 +3501,23 @@ function renderHistoryList(searchTerm = '') {
             }
          }
         function filterHistory() { const searchTerm = document.getElementById('searchHistory').value; renderHistoryList(searchTerm); }
-        async function loadQuote(id) {
+        async function loadQuote(key) {
             // 首先加载用户列表
             await loadUserList();
 
             // ✅ 2026-08-12 改：总是从 cloud 拿完整 quote（getQuote 返回整个 JSON，包括 currentUnit）
             // 原因：getQuoteList 字段不全（缺 currentUnit），从 quoteHistory 找会丢 currentUnit
             // cloud 失败才 fallback 到 local
+            // ✅ 2026-11-07：key = projNo（id 可能重复 → 不再用 id 定位）
             let quote = null;
             if (currentUser) {
                 try {
-                    quote = await loadFullQuoteFromCloud(id);
+                    quote = await loadFullQuoteFromCloud(key);
                     if (quote) {
                         // Update local history with cloud data (this cloud quote has full fields)
-                        const idx = quoteHistory.findIndex(q => q.id === id);
+                        const idx = quote.projNo
+                            ? quoteHistory.findIndex(q => (q.projNo || '') === quote.projNo)
+                            : quoteHistory.findIndex(q => q.id === key);
                         if (idx >= 0) {
                             quoteHistory[idx] = quote;
                         } else {
@@ -3472,7 +3532,7 @@ function renderHistoryList(searchTerm = '') {
             // Fallback to local only if cloud failed
             let fromFallback = false;
             if (!quote) {
-                quote = quoteHistory.find(q => q.id === id);
+                quote = _findQuote_(key);
                 fromFallback = true;
             }
             
@@ -4512,15 +4572,19 @@ function renderHistoryList(searchTerm = '') {
                     try {
                         localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}`);
                         localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}_time`);
+                        // ✅ 2026-11-07：新版缓存 key 带 _v2（带版本戳），保存后同样要清
+                        localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}_v2`);
+                        localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}_v2_time`);
+                        localStorage.removeItem(`quote_full_${currentUser.username}_${cloudQuoteId}_v2_stamp`);
                     } catch (e) {}
 
                     // Update local storage
                     let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                    let idx = history.findIndex(h => h.id === syncedQuoteData.id);
+                    // ✅ 2026-11-07：先按 projNo 找（唯一），再退回 id
+                    //    以前先按 id 找 → 改名后多份报价共用同一个 id，会更新到另一份上
+                    let idx = history.findIndex(h => (h.projNo || '') === (syncedQuoteData.projNo || ''));
                     if (idx < 0) {
-                        // ✅ 2026-11-07：同 projNo 但 id 不同（新建报价时用了已存在的 Project No）
-                        //    → 要替换那一条，不能再插一条，否则历史里会出现两份同 projNo 的报价
-                        idx = history.findIndex(h => (h.projNo || '') === (syncedQuoteData.projNo || ''));
+                        idx = history.findIndex(h => h.id != null && String(h.id) === String(syncedQuoteData.id));
                     }
                     if (idx >= 0) {
                         history[idx] = syncedQuoteData;
@@ -4830,7 +4894,7 @@ function renderHistoryList(searchTerm = '') {
                     return;
                 }
                 
-                // 直接使用id作为projNo，因为History中的id就是projNo
+                // ✅ 2026-11-07：传进来的就是 projNo（History 现在用 projNo 当唯一键）
                 const projNo = id.toString();
 
                 const response = await fetch(GAS_URL + '?action=shareQuote&username=' + encodeURIComponent(currentUser.username) + '&targetUsername=' + encodeURIComponent(targetUsername) + '&projNo=' + encodeURIComponent(projNo));
@@ -4838,11 +4902,12 @@ function renderHistoryList(searchTerm = '') {
 
                 if (result.success) {
                     // 本地标记 sharedMarked，徽章立刻显示 (2026-06-16)
-                    const quote = quoteHistory.find(q => q.id === id || q.projNo === projNo);
+                    // ✅ 2026-11-07：按 projNo 定位（id 可能重复 → 会标错那份）
+                    const quote = _findQuote_(projNo);
                     if (quote) {
                         quote.sharedMarked = true;
                         let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                        const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
+                        const idx = history.findIndex(h => (h.projNo || '') === projNo);
                         if (idx >= 0) {
                             history[idx] = quote;
                             safeSetLocalStorage('quoteHistory', JSON.stringify(history));
@@ -4861,14 +4926,15 @@ function renderHistoryList(searchTerm = '') {
         }
 
         // ========== Commission Functions (2026-06-22 拆成 50/100) ==========
-        async function promptCommission50(id) {
+        async function promptCommission50(key) {
             try {
-                const quote = quoteHistory.find(q => q.id === id || q.projNo === id);
+                // ✅ 2026-11-07：按 projNo 定位（id 可能重复 → 会标错那份）
+                const quote = _findQuote_(key);
                 if (!quote) {
                     alert('Quote not found');
                     return;
                 }
-                const projNo = quote.projNo || id;
+                const projNo = quote.projNo || key;
 
                 // 已标记过则不处理
                 if (quote.commission50Marked) {
@@ -4902,7 +4968,8 @@ function renderHistoryList(searchTerm = '') {
                 // 2026-07-29 改：depositLocked 改成从 commission50At 派生，这里仍设 depositLocked=true 兼容老数据
                 quote.depositLocked = true; // 锁定 50 池（兼容老数据，backadmin 仍读这个字段）
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
+                // ✅ 2026-11-07：只按 projNo 定位（id 可能重复 → 会更新错那份）
+                const idx = history.findIndex(h => (h.projNo || '') === projNo);
                 if (idx >= 0) {
                     history[idx] = quote;
                 } else {
@@ -4929,14 +4996,15 @@ function renderHistoryList(searchTerm = '') {
             }
         }
 
-        async function promptCommission100(id) {
+        async function promptCommission100(key) {
             try {
-                const quote = quoteHistory.find(q => q.id === id || q.projNo === id);
+                // ✅ 2026-11-07：按 projNo 定位（id 可能重复 → 会标错那份）
+                const quote = _findQuote_(key);
                 if (!quote) {
                     alert('Quote not found');
                     return;
                 }
-                const projNo = quote.projNo || id;
+                const projNo = quote.projNo || key;
 
                 // 强顺序：必须先点过佣金 50
                 if (!quote.commission50Marked) {
@@ -4973,7 +5041,8 @@ function renderHistoryList(searchTerm = '') {
                 quote.commission100At = now;
                 // 2026-07-29：100 池锁定（不直接用 depositLocked，已被 commission50At 锁定过）
                 let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
+                // ✅ 2026-11-07：只按 projNo 定位（id 可能重复 → 会更新错那份）
+                const idx = history.findIndex(h => (h.projNo || '') === projNo);
                 if (idx >= 0) {
                     history[idx] = quote;
                 } else {
@@ -5064,8 +5133,9 @@ function renderHistoryList(searchTerm = '') {
         }
         
         // ========== Complete Functions ==========
-        function promptCompleteQuote(id) {
-            const quote = quoteHistory.find(q => q.id === id || q.projNo === id);
+        function promptCompleteQuote(key) {
+            // ✅ 2026-11-07：按 projNo 定位（id 可能重复 → 会下单错那份）
+            const quote = _findQuote_(key);
             if (!quote) {
                 alert('Quote not found');
                 return;
@@ -5107,13 +5177,18 @@ function renderHistoryList(searchTerm = '') {
                 return;
             }
 
-            completeQuote(id);
+            completeQuote(key);
         }
 
-        async function completeQuote(id) {
+        async function completeQuote(key) {
             try {
-                const quote = quoteHistory.find(q => q.id === id || q.projNo === id);
-                const projNo = quote.projNo || id;
+                // ✅ 2026-11-07：按 projNo 定位（id 可能重复 → 会下单错那份）
+                const quote = _findQuote_(key);
+                if (!quote) {
+                    alert('Quote not found');
+                    return;
+                }
+                const projNo = quote.projNo || key;
 
                 const now = new Date().toISOString();
                 // ✅ 2026-08-06 改：下单 ≠ 完成
@@ -5130,7 +5205,8 @@ function renderHistoryList(searchTerm = '') {
                 if (result.success) {
                     // Update local storage
                     let history = JSON.parse(localStorage.getItem('quoteHistory') || '[]');
-                    const idx = history.findIndex(h => h.id === id || h.projNo === projNo);
+                    // ✅ 2026-11-07：只按 projNo 定位
+                    const idx = history.findIndex(h => (h.projNo || '') === projNo);
                     if (idx >= 0) {
                         history[idx] = quote;
                     }
