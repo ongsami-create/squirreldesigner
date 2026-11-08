@@ -7729,6 +7729,7 @@ const SQProfile = (function () {
   };
 
   let session = null;    // OrderFile 身份 {username, displayName, roles[], role, at}
+  let lastLoginError = null;  // 自动登入失败的原因（给用户看，别只说「连不上」）
   let mask = null;       // 当前弹窗 DOM
   let busy = false;      // 提交锁，防连点（OrderFile 2026-11-03 修过同样的 bug）
 
@@ -7783,7 +7784,21 @@ const SQProfile = (function () {
 
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, limit);
-    const opts = { method: 'POST', body: body, credentials: 'omit' };
+    // ⚠⚠ 2026-11-08：**必须显式声明 form-encoded**！
+    //   fetch 用**字符串 body** 又不设 Content-Type 时，浏览器默认发
+    //   `text/plain;charset=UTF-8` → GAS **不会**把它解析进 e.parameter
+    //   （只会落在 e.postData.contents，而我们的 body 不是 JSON）→
+    //   后端收到 `missing action` → 自动登入失败 →
+    //   弹窗报「暂时连不上 OrderFile，请稍后再试」（实际是协议不对，不是网络问题）。
+    //   实测：text/plain → {"ok":false,"error":"missing action"}；
+    //        form-encoded → 正常进业务逻辑。
+    //   application/x-www-form-urlencoded 属于 CORS 安全列表 → 不会触发预检。
+    const opts = {
+      method: 'POST',
+      body: body,
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }
+    };
     if (ctrl) opts.signal = ctrl.signal;
 
     return fetch(OF_GAS_URL, opts).then(function (r) {
@@ -7918,10 +7933,34 @@ const SQProfile = (function () {
       };
       // ⚠ 只存 username/roles/role，**绝不存密码**
       writeSession(session);
+      lastLoginError = null;
     } catch (e) {
       console.warn('[SQProfile] 自动登入 OrderFile 失败:', e.message);
+      lastLoginError = e;
       session = null;
     }
+  }
+
+  /**
+   * 自动登入失败 → 给人看得懂的提示
+   * ⚠ 不要再一律说「暂时连不上」—— 协议不对、密码错、没网络，三种原因完全不同，
+   *    一律含糊会让人反复重试却永远不通。
+   */
+  function loginErrorText_(err) {
+    const msg = String((err && err.message) || '');
+    if (msg.indexOf('missing action') >= 0 || msg.indexOf('unknown action') >= 0) {
+      return 'OrderFile 后端接口对不上，请联系管理员升级后端';
+    }
+    if (msg.indexOf('账号或密码不对') >= 0) {
+      return 'OrderFile 账号密码校验失败，请确认密码后再试';
+    }
+    if (msg.indexOf('读不到人员名册') >= 0) {
+      return '读不到人员名册，请联系管理员（这不是密码问题）';
+    }
+    if (msg.indexOf('Failed to fetch') >= 0 || msg.indexOf('NetworkError') >= 0) {
+      return '连不上 OrderFile 服务器，请检查网络后重试';
+    }
+    return msg || '暂时连不上 OrderFile，请稍后再试';
   }
 
   /* ---------------- 弹窗骨架 ---------------- */
@@ -8293,7 +8332,7 @@ const SQProfile = (function () {
     if (!session) {
       await init();
       if (!session) {
-        profileToast('暂时连不上 OrderFile，请稍后再试', true);
+        profileToast(loginErrorText_(lastLoginError), true);
         return;
       }
     }
@@ -8343,7 +8382,8 @@ const SQProfile = (function () {
     _roleOf: roleOf,
     _ofApi: ofApi,
     _readSession: readSession,
-    _writeSession: writeSession
+    _writeSession: writeSession,
+    _loginErrorText_: loginErrorText_
   };
 })();
 
