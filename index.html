@@ -1261,6 +1261,177 @@ body {
     background: #fff;
 }
 .sq-profile-compose-actions { display: flex; gap: 8px; }
+/* ---------- 2026-11-08：多选 chip / 人员选择 / 附件 / 缩略图 ---------- */
+.sq-profile-field { display: flex; flex-direction: column; gap: 6px; }
+.sq-profile-label { font-size: 12.5px; font-weight: 700; color: #1d1d1f; }
+.sq-profile-hint { font-size: 11.5px; color: #8e8e93; line-height: 1.6; }
+.sq-profile-chipset { display: flex; flex-wrap: wrap; gap: 6px; }
+.sq-profile-pick {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+    color: #6e6e73;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.sq-profile-pick:hover { border-color: rgba(31, 182, 196, 0.65); color: #14808b; }
+.sq-profile-pick.on {
+    background: rgba(31, 182, 196, 0.16);
+    border-color: rgba(31, 182, 196, 0.55);
+    color: #14808b;
+}
+.sq-profile-inputline { display: flex; gap: 6px; }
+.sq-profile-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    padding: 7px 11px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    box-sizing: border-box;
+}
+.sq-profile-input:focus { outline: none; border-color: rgba(31, 182, 196, 0.65); }
+.sq-profile-people {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 190px;
+    overflow: auto;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+    border-radius: 10px;
+    padding: 9px 11px;
+    background: #fbfbfd;
+}
+.sq-profile-people-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sq-profile-people-row .lb { font-size: 12px; font-weight: 700; color: #6e6e73; flex: 0 0 auto; }
+.sq-profile-filebtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border: 1px dashed rgba(0, 0, 0, 0.22);
+    border-radius: 10px;
+    background: #fff;
+    color: #1d1d1f;
+    cursor: pointer;
+}
+.sq-profile-filebtn:hover { border-color: rgba(31, 182, 196, 0.7); color: #14808b; }
+.sq-profile-filebtn input { display: none; }
+.sq-profile-picked { display: flex; flex-wrap: wrap; gap: 6px; }
+.sq-profile-picked .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    max-width: 100%;
+}
+.sq-profile-picked .item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.sq-profile-picked .item button {
+    border: none;
+    background: rgba(215, 0, 21, 0.12);
+    color: #d70015;
+    font-size: 12px;
+    font-weight: 700;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+.sq-profile-thumbs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.sq-profile-thumb {
+    width: 74px;
+    height: 74px;
+    border-radius: 9px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #f2f2f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.sq-profile-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sq-profile-thumb .ph { font-size: 20px; opacity: .4; }
+.sq-profile-docs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sq-profile-doc {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 5px 8px 5px 9px;
+    border-radius: 8px;
+    background: rgba(107, 93, 63, 0.10);
+    color: #6B5D3F;
+    max-width: 100%;
+}
+.sq-profile-doc .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+.sq-profile-doc button {
+    border: none;
+    background: rgba(107, 93, 63, 0.18);
+    color: #6B5D3F;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.sq-profile-doc button:disabled { opacity: .5; cursor: default; }
+.sq-profile-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 24px;
+    cursor: zoom-out;
+}
+.sq-profile-lightbox img {
+    max-width: 94vw;
+    max-height: 86vh;
+    border-radius: 10px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+.sq-profile-lightbox .cap {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-size: 12.5px;
+    opacity: .85;
+    word-break: break-all;
+    padding: 0 20px;
+}
+.sq-profile-lb-dl {
+    margin-left: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.sq-profile-lb-dl:hover { background: rgba(255, 255, 255, 0.26); }
+
 .sq-modal-btn.primary {
     background: #1FB6C4;
     border-color: #1FB6C4;
@@ -7875,6 +8046,28 @@ const SQProfile = (function () {
       document.addEventListener('input', function (e) {
         if (e.target && e.target.id === 'projNo') syncButtonState();
       });
+      // ⚠ 多选 chip（画像 / 快捷回复 / 部门 / 人员）—— 委托，表单重渲染也不会失效
+      document.addEventListener('click', function (e) {
+        const t = e.target;
+        if (!t || !t.closest) return;
+        // 已选文件上的「×」
+        const rm = t.closest('[data-rm]');
+        if (rm) {
+          e.preventDefault();
+          const id = String(rm.getAttribute('data-rm') || '');
+          if (id.charAt(0) === 'p') pendingPhotos.splice(Number(id.slice(1)), 1);
+          else pendingDocs.splice(Number(id.slice(1)), 1);
+          renderPicked_();
+          return;
+        }
+        const b = t.closest('.sq-profile-pick');
+        if (!b) return;
+        e.preventDefault();
+        b.className = isOn_(b) ? 'sq-profile-pick' : 'sq-profile-pick on';
+        // 部门变了 → 人员列表跟着变
+        const box = b.parentNode && b.parentNode.getAttribute ? b.parentNode.getAttribute('data-box') : '';
+        if (box === 'sqProfileDepts') renderPeopleUsers_();
+      });
       // ⚠ 代码赋值 projNo（打开历史报价）不触发 input → 视觉提示会滞后。
       //   但这**不影响功能**：按钮永远可点，点击时现读实时值。
       //   这里只补一次视觉同步，轮询间隔 1 秒，代价可忽略。
@@ -8071,6 +8264,33 @@ const SQProfile = (function () {
       }
       if (e.assignTo) h += '<div class="sq-profile-tli-a">🔔 提醒 ' + esc(e.assignTo) + ' 跟进</div>';
       if (e.markDone) h += '<div class="sq-profile-tli-a">✓ 已标记完成</div>';
+      // 参与人员
+      const pgs = e.participants || [];
+      if (pgs.length) h += '<div class="sq-profile-tli-a">👥 ' + esc(pgs.join('、')) + '</div>';
+      // 照片 + 文档（2026-11-08）
+      const photos = e.photos || [];
+      const docs = e.docs || [];
+      if (photos.length || docs.length) {
+        const key = 'att' + (++attSeq);
+        attStore[key] = { photos: photos, docs: docs };
+        if (photos.length) {
+          h += '<div class="sq-profile-thumbs" data-att="' + key + '">';
+          for (let k = 0; k < photos.length; k++) {
+            const fid = fileIdOf_(photos[k].url);
+            h += '<div class="sq-profile-thumb" data-thumb="' + esc(fid) + '" data-name="' +
+                 esc(photos[k].name || '') + '"><span class="ph">🖼</span></div>';
+          }
+          h += '</div>';
+        }
+        if (docs.length) {
+          h += '<div class="sq-profile-docs" data-docs="' + key + '">';
+          for (let k = 0; k < docs.length; k++) {
+            h += '<span class="sq-profile-doc"><span class="nm">' + esc(docs[k].name || '文件') + '</span>' +
+                 '<button type="button" data-doc="' + k + '">⬇ 下载</button></span>';
+          }
+          h += '</div>';
+        }
+      }
       h += '</div>';
     }
     h += '</div>';
@@ -8102,6 +8322,8 @@ const SQProfile = (function () {
 
     showModal('客户画像 · ' + (arch.projNo || ''), meta, body, foot);
     bindFoot();
+    // 照片缩略图异步补上（后端代理 Drive 私有文件）
+    hydrateAttachments_();
   }
 
   function renderEmpty(projNo) {
@@ -8154,28 +8376,60 @@ const SQProfile = (function () {
 
   /* ---------------- 添加信息 / 创建信息流 ---------------- */
 
-  /** 类型下拉的候选（OrderFile 的 chips，按当前角色取） */
-  let typeChips = null;
+  /* ---------------- 配置（名册 / 词库） ---------------- */
+
+  /**
+   * 部门列表 —— 跟 OrderFile 站内的 DEPT_LIST 一致
+   * ⚠ 这里「部门」= OrderFile 的角色 key（sales/design/order/logistics/install/admin）
+   */
+  const DEPT_LIST = [
+    { key: 'sales', label: '业务员' },
+    { key: 'design', label: '设计师' },
+    { key: 'order', label: '下单员' },
+    { key: 'logistics', label: '物流' },
+    { key: 'install', label: '安装员' },
+    { key: 'admin', label: '管理员' }
+  ];
+
+  let cfgCache = null;      // getConfig 结果（名册 + 四组词库）
+  let typeChips = null;     // 当前角色的类型候选
+  let pendingPhotos = [];   // 待上传照片 [{name, data, preview}]
+  let pendingDocs = [];     // 待上传文件 [{name, data}]
+  const thumbsCache = {};   // fileId → data URL（缩略图）
+
+  /** 拉一次配置并缓存（名册 / 词库一起拿，别分多次调用） */
+  async function loadConfig_() {
+    if (cfgCache) return cfgCache;
+    try {
+      const r = await ofApi('getConfig', {});
+      cfgCache = {
+        users: (r && r.users) || {},
+        chipSets: (r && r.chipSets) || {},
+        profileChips: (r && r.profileChips) || [],
+        contactPrefs: (r && r.contactPrefs) || [],
+        replies: (r && r.chipSets && r.chipSets.replies) || []
+      };
+    } catch (e) {
+      cfgCache = { users: {}, chipSets: {}, profileChips: [], contactPrefs: [], replies: [] };
+    }
+    return cfgCache;
+  }
 
   async function loadTypeChips() {
     if (typeChips) return typeChips;
-    try {
-      const r = await ofApi('getConfig', {});
-      const sets = (r && r.chipSets && r.chipSets.types) || {};
-      const role = session ? session.role : 'sales';
-      let list = sets[role];
-      if (!Array.isArray(list) || !list.length) {
-        // 这个角色没配 → 合并所有角色的（去重）
-        const all = [];
-        Object.keys(sets).forEach(function (k) {
-          if (Array.isArray(sets[k])) sets[k].forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
-        });
-        list = all;
-      }
-      typeChips = list.slice(0, 30);
-    } catch (e) {
-      typeChips = [];
+    const cfg = await loadConfig_();
+    const sets = cfg.chipSets.types || {};
+    const role = session ? session.role : 'sales';
+    let list = sets[role];
+    if (!Array.isArray(list) || !list.length) {
+      // 这个角色没配 → 合并所有角色的（去重）
+      const all = [];
+      Object.keys(sets).forEach(function (k) {
+        if (Array.isArray(sets[k])) sets[k].forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
+      });
+      list = all;
     }
+    typeChips = list.slice(0, 30);
     return typeChips;
   }
 
@@ -8188,19 +8442,409 @@ const SQProfile = (function () {
     return h;
   }
 
-  function composeHtml(title, btnLabel, withType) {
-    return '<div class="sq-profile-compose">' +
-      '<div class="sq-profile-compose-title">' + esc(title) + '</div>' +
-      '<textarea id="sqProfileInput" class="sq-profile-textarea" rows="4" ' +
-        'placeholder="写点什么…（可以留空）"></textarea>' +
-      (withType
-        ? '<select id="sqProfileType" class="sq-profile-select">' + typeOptionsHtml() + '</select>'
-        : '') +
-      '<div class="sq-profile-compose-actions">' +
-        '<button class="sq-modal-btn primary" id="sqProfileSubmit">' + esc(btnLabel) + '</button>' +
-        '<button class="sq-modal-btn" id="sqProfileCancel">取消</button>' +
-      '</div>' +
-    '</div>';
+  /* ---------------- 表单零件 ---------------- */
+
+  /** chip 按钮当前是不是选中态 */
+  function isOn_(el) {
+    if (!el) return false;
+    if (el.classList && el.classList.contains) return el.classList.contains('on');
+    return String(el.className || '').split(/\s+/).indexOf('on') >= 0;
+  }
+
+  /** 多选 chip 组 */
+  function chipSetHtml_(boxId, list, selected) {
+    const sel = selected || [];
+    let h = '<div class="sq-profile-chipset" data-box="' + esc(boxId) + '">';
+    for (let i = 0; i < list.length; i++) {
+      h += '<button type="button" class="sq-profile-pick' + (sel.indexOf(list[i]) >= 0 ? ' on' : '') +
+           '" data-chip="' + esc(list[i]) + '">' + esc(list[i]) + '</button>';
+    }
+    if (!list.length) h += '<div class="sq-profile-hint">（暂时没有候选词）</div>';
+    h += '</div>';
+    return h;
+  }
+
+  /** 读某个 chip 组选中的值 */
+  function readChipSet_(boxId) {
+    const out = [];
+    if (typeof document === 'undefined' || !document.querySelector) return out;
+    const box = document.querySelector('[data-box="' + boxId + '"]');
+    if (!box || !box.querySelectorAll) return out;
+    const nodes = box.querySelectorAll('.sq-profile-pick');
+    for (let i = 0; i < nodes.length; i++) {
+      if (isOn_(nodes[i])) out.push(nodes[i].getAttribute('data-chip'));
+    }
+    return out;
+  }
+
+  /** 参与协作：部门多选 + 人员多选（人员按所选部门过滤） */
+  function peopleHtml_(cfg) {
+    let h = '<div class="sq-profile-people" id="sqProfilePeople">';
+    h += '<div class="sq-profile-people-row"><span class="lb">部门</span>' +
+         '<span class="sq-profile-chipset" data-box="sqProfileDepts">';
+    for (let i = 0; i < DEPT_LIST.length; i++) {
+      h += '<button type="button" class="sq-profile-pick" data-chip="' + DEPT_LIST[i].key + '">' +
+           esc(DEPT_LIST[i].label) + '</button>';
+    }
+    h += '</span></div>';
+    h += '<div class="sq-profile-people-row" id="sqProfilePeopleRow" style="display:none">' +
+         '<span class="lb">人员</span><span class="sq-profile-chipset" data-box="sqProfileUsers"></span></div>';
+    h += '</div>';
+    return h;
+  }
+
+  /** 部门变了 → 重画人员列表 */
+  function renderPeopleUsers_() {
+    if (typeof document === 'undefined' || !document.querySelector) return;
+    const box = document.querySelector('[data-box="sqProfileUsers"]');
+    const row = document.getElementById('sqProfilePeopleRow');
+    if (!box || !row) return;
+    const depts = readChipSet_('sqProfileDepts');
+    const picked = readChipSet_('sqProfileUsers');
+    const users = (cfgCache && cfgCache.users) || {};
+    const all = Object.keys(users).map(function (k) {
+      return { username: k, displayName: users[k].displayName || k, roles: users[k].roles || [] };
+    });
+    const inDept = all.filter(function (u) {
+      for (let i = 0; i < depts.length; i++) {
+        if (u.roles.indexOf(depts[i]) >= 0) return true;
+      }
+      return false;
+    });
+    row.style.display = depts.length ? 'flex' : 'none';
+    let h = '';
+    for (let i = 0; i < inDept.length; i++) {
+      h += '<button type="button" class="sq-profile-pick' + (picked.indexOf(inDept[i].username) >= 0 ? ' on' : '') +
+           '" data-chip="' + esc(inDept[i].username) + '" data-name="' + esc(inDept[i].displayName) + '">' +
+           esc(inDept[i].displayName) + '</button>';
+    }
+    if (!inDept.length) h = '<span class="sq-profile-hint">这个部门暂时没人</span>';
+    box.innerHTML = h;
+  }
+
+  /** 文件 → base64（去掉 data URL 前缀） */
+  function readB64_(file) {
+    return new Promise(function (resolve, reject) {
+      const r = new FileReader();
+      r.onload = function () {
+        const s = String(r.result || '');
+        const i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      r.onerror = function () { reject(new Error('读取文件失败')); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  /** 压图（1280px / 0.62，跟 OrderFile 一样）—— 手机拍的照片不压会撑爆请求 */
+  function compressImage_(file) {
+    return new Promise(function (resolve) {
+      try {
+        if (!/^image\//.test(file.type)) { resolve(file); return; }
+        if (typeof URL === 'undefined' || typeof Image === 'undefined') { resolve(file); return; }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = function () {
+          try { URL.revokeObjectURL(url); } catch (e) {}
+          try {
+            let w = img.width, h = img.height;
+            const scale = Math.min(1, 1280 / Math.max(w, h));
+            w = Math.round(w * scale); h = Math.round(h * scale);
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+            if (c.toBlob) {
+              c.toBlob(function (b) { resolve(b || file); }, 'image/jpeg', 0.62);
+              return;
+            }
+          } catch (e2) { /* 压不了就用原图 */ }
+          resolve(file);
+        };
+        img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} resolve(file); };
+        img.src = url;
+      } catch (e3) { resolve(file); }
+    });
+  }
+
+  /** 已选文件列表 */
+  function renderPicked_() {
+    if (typeof document === 'undefined') return;
+    const box = document.getElementById('sqProfilePicked');
+    if (!box) return;
+    let h = '';
+    for (let i = 0; i < pendingPhotos.length; i++) {
+      h += '<span class="item">📷 <span class="nm">' + esc(pendingPhotos[i].name) + '</span>' +
+           '<button type="button" data-rm="p' + i + '">×</button></span>';
+    }
+    for (let i = 0; i < pendingDocs.length; i++) {
+      h += '<span class="item">📎 <span class="nm">' + esc(pendingDocs[i].name) + '</span>' +
+           '<button type="button" data-rm="d' + i + '">×</button></span>';
+    }
+    box.innerHTML = h;
+  }
+
+  async function addFiles_(bucket, files, isImage) {
+    const arr = Array.prototype.slice.call(files || []);
+    if (!arr.length) return;
+    for (let i = 0; i < arr.length; i++) {
+      const f = arr[i];
+      try {
+        const c = isImage ? await compressImage_(f) : f;
+        const data = await readB64_(c);
+        bucket.push({ name: f.name || ('file' + (i + 1)), data: data, size: f.size || 0 });
+      } catch (e) {
+        profileToast('读取「' + (f.name || '文件') + '」失败', true);
+      }
+    }
+    renderPicked_();
+  }
+
+  function bindFileInputs_() {
+    const photoIn = document.getElementById('sqProfilePhotos');
+    const docIn = document.getElementById('sqProfileDocs');
+    if (photoIn) photoIn.onchange = function () { addFiles_(pendingPhotos, photoIn.files, true); };
+    if (docIn) docIn.onchange = function () { addFiles_(pendingDocs, docIn.files, false); };
+  }
+
+  /** 自定义画像 chip */
+  function addCustomChip_() {
+    const inp = document.getElementById('sqProfileChipNew');
+    if (!inp || !document.querySelector) return;
+    const box = document.querySelector('[data-box="sqProfileChips"]');
+    if (!box) return;
+    const v = String(inp.value || '').trim().slice(0, 24);
+    if (!v) return;
+    if (readChipSet_('sqProfileChips').indexOf(v) < 0) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sq-profile-pick on';
+      b.setAttribute('data-chip', v);
+      b.textContent = v;
+      box.appendChild(b);
+    }
+    inp.value = '';
+  }
+
+  /* ---------------- 附件显示 / 下载 ---------------- */
+
+  /** 从 uc?id=... 里取文件 id */
+  function fileIdOf_(url) {
+    const m = /[?&]id=([^&#]+)/.exec(String(url || ''));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  /**
+   * 批量拉缩略图（一次 12 张）
+   * ⚠ 附件是 Drive 私有文件 → uc?id=xxx 浏览器直接打开是**坏图**
+   *    → 必须让后端 getFile / getThumbs 代理（跟 OrderFile 站内一样）
+   */
+  async function loadThumbs_(photos) {
+    const need = [];
+    const seen = {};
+    (photos || []).forEach(function (p) {
+      const id = fileIdOf_(p && p.url);
+      if (id && !thumbsCache[id] && !seen[id]) { seen[id] = 1; need.push(id); }
+    });
+    if (!need.length) return;
+    const BATCH = 12;
+    for (let i = 0; i < need.length; i += BATCH) {
+      const part = need.slice(i, i + BATCH);
+      try {
+        const r = await ofApi('getThumbs', { ids: part }, 45000);
+        if (r && r.thumbs) {
+          for (const id in r.thumbs) {
+            const t = r.thumbs[id];
+            if (t && t.data) thumbsCache[id] = 'data:' + (t.mime || 'image/jpeg') + ';base64,' + t.data;
+          }
+        }
+      } catch (e) {
+        // 批量失败 → 一张一张取
+        for (const id of part) {
+          try {
+            const r = await ofApi('getFile', { id: id, thumb: '1' }, 45000);
+            if (r && r.data) thumbsCache[id] = 'data:' + (r.mime || 'image/jpeg') + ';base64,' + r.data;
+          } catch (e2) { /* 这张就算了 */ }
+        }
+      }
+    }
+  }
+
+  /** 下载文件（走后端代理 —— Drive 私有文件没法直接下载） */
+  async function downloadFile_(file) {
+    const id = fileIdOf_(file && file.url);
+    if (!id) { profileToast('这个文件没有可下载的地址', true); return; }
+    const name = (file && file.name) || 'download';
+    profileToast('正在准备下载…');
+    try {
+      const r = await ofApi('getFile', { id: id, thumb: '0' }, 60000);
+      if (!r || !r.data) { profileToast('读不到文件内容', true); return; }
+      const bin = atob(r.data);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const blob = new Blob([buf], { type: r.mime || 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        try { URL.revokeObjectURL(a.href); } catch (e) {}
+        if (a.remove) a.remove();
+      }, 1500);
+    } catch (e) {
+      profileToast('下载失败：' + (e.message || '未知错误'), true);
+    }
+  }
+
+  /** 点缩略图放大（放大层里也能下载） */
+  function openLightbox_(src, name, file) {
+    const box = document.createElement('div');
+    box.className = 'sq-profile-lightbox';
+    box.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(name || '') + '">' +
+                    '<div class="cap">' + esc(name || '') +
+                    (file && file.url ? ' <button type="button" class="sq-profile-lb-dl">⬇ 下载</button>' : '') +
+                    '</div>';
+    box.onclick = function (e) {
+      // 点下载按钮别把放大层关掉
+      if (e && e.target && e.target.className && String(e.target.className).indexOf('sq-profile-lb-dl') >= 0) return;
+      if (box.remove) box.remove();
+    };
+    const dl = box.querySelector ? box.querySelector('.sq-profile-lb-dl') : null;
+    if (dl) {
+      dl.onclick = function (e) {
+        e.stopPropagation();
+        if (file) downloadFile_(file);
+      };
+    }
+    document.body.appendChild(box);
+  }
+
+  /**
+   * 渲染完档案后：拉缩略图 + 接上「点开放大」和「下载」
+   * ⚠ 缩略图是**异步**的（后端代理 Drive 私有文件）→ 拿到后再填进去
+   */
+  async function hydrateAttachments_() {
+    if (!mask || !mask.querySelectorAll) return;
+    const boxes = mask.querySelectorAll('[data-att]');
+    for (let i = 0; i < boxes.length; i++) {
+      const key = boxes[i].getAttribute('data-att');
+      const att = attStore[key];
+      if (!att) continue;
+      await loadThumbs_(att.photos);
+      for (let k = 0; k < att.photos.length; k++) {
+        const fid = fileIdOf_(att.photos[k].url);
+        const cell = boxes[i].querySelector('[data-thumb="' + fid + '"]');
+        if (!cell) continue;
+        const src = thumbsCache[fid];
+        if (src) cell.innerHTML = '<img src="' + src + '" alt="' + esc(att.photos[k].name || '') + '">';
+      }
+    }
+    // 点缩略图 → 放大（放大层里能下载）
+    const thumbs = mask.querySelectorAll('.sq-profile-thumb');
+    for (let i = 0; i < thumbs.length; i++) {
+      thumbs[i].onclick = function () {
+        const fid = this.getAttribute('data-thumb');
+        const src = thumbsCache[fid];
+        if (!src) return;
+        // 找回原始文件信息（放大层里要能下载）
+        let file = null;
+        const box = this.parentNode;
+        const key = box && box.getAttribute ? box.getAttribute('data-att') : '';
+        const att = attStore[key];
+        if (att) {
+          for (let k = 0; k < att.photos.length; k++) {
+            if (fileIdOf_(att.photos[k].url) === fid) { file = att.photos[k]; break; }
+          }
+        }
+        openLightbox_(src, this.getAttribute('data-name') || '', file);
+      };
+    }
+    // 文档 → 下载
+    const docs = mask.querySelectorAll('[data-docs]');
+    for (let i = 0; i < docs.length; i++) {
+      const key = docs[i].getAttribute('data-docs');
+      const att = attStore[key];
+      if (!att) continue;
+      const btns = docs[i].querySelectorAll('[data-doc]');
+      for (let k = 0; k < btns.length; k++) {
+        btns[k].onclick = function () {
+          const idx = Number(this.getAttribute('data-doc'));
+          const f = att.docs[idx];
+          if (f) downloadFile_(f);
+        };
+      }
+    }
+  }
+
+  /**
+   * 客户画像 → profile 参数（纯函数，方便单测）
+   * ⚠ 三样都没填 → 返回空串（**不要**发 profile 参数）
+   *    后端收到空 profile 会当成「要更新画像」→ 白跑一趟
+   */
+  function profilePayload_(chips, prefs, note) {
+    const c = chips || [], p = prefs || [], n = String(note || '').trim();
+    if (!c.length && !p.length && !n) return '';
+    return JSON.stringify({ chips: c, contactPrefs: p, note: n });
+  }
+
+  /**
+   * 参与协作的部门与人员 → 参数（纯函数，方便单测）
+   * ⚠ 没人没部门 → 不带这两个参数（后端会当成「清空」）
+   */
+  function peoplePayload_(depts, peoples) {
+    const out = {};
+    const d = depts || [], p = peoples || [];
+    if (d.length) out.participantDepts = JSON.stringify(d);
+    if (p.length) out.participants = JSON.stringify(p);
+    return out;
+  }
+
+  /**
+   * 表单
+   * @param mode 'add'（添加信息）| 'create'（创建信息流）
+   * create 多出「客户画像三块 + 参与协作的部门与人员」
+   */
+  function composeHtml(title, btnLabel, mode) {
+    const isCreate = mode === 'create';
+    let h = '<div class="sq-profile-compose">';
+    h += '<div class="sq-profile-compose-title">' + esc(title) + '</div>';
+
+    if (isCreate) {
+      h += '<div class="sq-profile-field"><div class="sq-profile-label">客户画像 · 习惯与偏好</div>' +
+           '<div id="sqProfileChipsBox"></div>' +
+           '<div class="sq-profile-inputline">' +
+           '<input id="sqProfileChipNew" class="sq-profile-input" placeholder="自定义一个（回车添加）">' +
+           '<button type="button" class="sq-modal-btn" id="sqProfileChipAdd">添加</button></div></div>';
+      h += '<div class="sq-profile-field"><div class="sq-profile-label">客户画像 · 怎么联系他</div>' +
+           '<div id="sqProfilePrefsBox"></div></div>';
+      h += '<div class="sq-profile-field"><div class="sq-profile-label">客户画像 · 补充说明</div>' +
+           '<textarea id="sqProfileNote" class="sq-profile-textarea" rows="2" ' +
+           'placeholder="比如：厨房不能有味，客户很在意。客厅要多一个储物位。"></textarea></div>';
+      h += '<div class="sq-profile-field"><div class="sq-profile-label">参与协作的部门与人员</div>' +
+           '<div id="sqProfilePeopleBox"></div>' +
+           '<div class="sq-profile-hint">勾选的人会在他们的「跟进中」列表里看到这张单。</div></div>';
+    }
+
+    h += '<div class="sq-profile-field"><div class="sq-profile-label">类型</div>' +
+         '<select id="sqProfileType" class="sq-profile-select">' + typeOptionsHtml() + '</select></div>';
+    h += '<div class="sq-profile-field"><div class="sq-profile-label">快捷回复 · 可多选</div>' +
+         '<div id="sqProfileRepliesBox"></div></div>';
+    h += '<div class="sq-profile-field"><div class="sq-profile-label">记录内容</div>' +
+         '<textarea id="sqProfileInput" class="sq-profile-textarea" rows="4" ' +
+         'placeholder="写点什么…（可以留空）"></textarea></div>';
+    h += '<div class="sq-profile-field"><div class="sq-profile-label">照片 / 文件 · 可多选</div>' +
+         '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+         '<label class="sq-profile-filebtn">📷 选照片<input type="file" id="sqProfilePhotos" accept="image/*" multiple></label>' +
+         '<label class="sq-profile-filebtn">📎 选文件<input type="file" id="sqProfileDocs" multiple></label>' +
+         '</div><div id="sqProfilePicked" class="sq-profile-picked"></div></div>';
+
+    h += '<div class="sq-profile-compose-actions">' +
+         '<button class="sq-modal-btn primary" id="sqProfileSubmit">' + esc(btnLabel) + '</button>' +
+         '<button class="sq-modal-btn" id="sqProfileCancel">取消</button>' +
+         '</div></div>';
+    return h;
   }
 
   /** 展开输入区时把底部对应按钮藏掉（否则会出现两个入口，看着像 bug） */
@@ -8217,35 +8861,68 @@ const SQProfile = (function () {
     if (!b) return;
     const arch = state_arch;
     if (!arch) return;
-    b.innerHTML = composeHtml('添加信息', '提交', true);
+    pendingPhotos = [];
+    pendingDocs = [];
+    b.innerHTML = composeHtml('添加信息', '提交', 'add');
     hideFootButton('[data-add]');
-    // 类型候选异步补上（先渲染再填，不让用户等）
-    loadTypeChips().then(function () {
-      const sel = document.getElementById('sqProfileType');
-      if (sel && sel.innerHTML.indexOf('option value="沟通"') < 0) {
-        sel.innerHTML = typeOptionsHtml();
-      }
-    }).catch(function () {});
+    bindFileInputs_();
+    renderPicked_();
     const submit = document.getElementById('sqProfileSubmit');
     if (submit) submit.onclick = function () { doSubmit(arch.projNo, false); };
     const cancel = document.getElementById('sqProfileCancel');
     if (cancel) cancel.onclick = function () { renderOrder(arch); };
+    // 类型候选 + 快捷回复 异步补上（先渲染再填，不让用户等）
+    // ⚠ 必须先 loadTypeChips() —— typeOptionsHtml() 读的是 typeChips
+    loadTypeChips().then(function () {
+      const sel = document.getElementById('sqProfileType');
+      if (sel) sel.innerHTML = typeOptionsHtml();
+      return loadConfig_();
+    }).then(function (cfg) {
+      const rb = document.getElementById('sqProfileRepliesBox');
+      if (rb) rb.innerHTML = chipSetHtml_('sqProfileReplies', cfg.replies || [], []);
+    }).catch(function () {});
   }
 
   async function openCreate() {
     const b = bodyEl();
     if (!b) return;
-    b.innerHTML = composeHtml('创建信息流', '创建', false);
+    pendingPhotos = [];
+    pendingDocs = [];
+    b.innerHTML = composeHtml('创建信息流', '创建', 'create');
     hideFootButton('[data-create]');
+    bindFileInputs_();
+    renderPicked_();
     const submit = document.getElementById('sqProfileSubmit');
     if (submit) submit.onclick = function () { doSubmit(state_projNo, true); };
     const cancel = document.getElementById('sqProfileCancel');
     if (cancel) cancel.onclick = function () { renderEmpty(state_projNo); };
+    const chipAdd = document.getElementById('sqProfileChipAdd');
+    if (chipAdd) chipAdd.onclick = function () { addCustomChip_(); };
+    const chipNew = document.getElementById('sqProfileChipNew');
+    if (chipNew) chipNew.onkeydown = function (e) {
+      if (e && (e.key === 'Enter' || e.keyCode === 13)) { e.preventDefault(); addCustomChip_(); }
+    };
+    loadTypeChips().then(function () {
+      const sel = document.getElementById('sqProfileType');
+      if (sel) sel.innerHTML = typeOptionsHtml();
+      return loadConfig_();
+    }).then(function (cfg) {
+      const cb = document.getElementById('sqProfileChipsBox');
+      if (cb) cb.innerHTML = chipSetHtml_('sqProfileChips', cfg.profileChips || [], []);
+      const pb = document.getElementById('sqProfilePrefsBox');
+      if (pb) pb.innerHTML = chipSetHtml_('sqProfilePrefs', cfg.contactPrefs || [], []);
+      const rb = document.getElementById('sqProfileRepliesBox');
+      if (rb) rb.innerHTML = chipSetHtml_('sqProfileReplies', cfg.replies || [], []);
+      const people = document.getElementById('sqProfilePeopleBox');
+      if (people) people.innerHTML = peopleHtml_(cfg);
+    }).catch(function () {});
   }
 
   /** 当前打开的档案（渲染用） */
   let state_arch = null;
   let state_projNo = '';
+  let attSeq = 0;
+  const attStore = {};   // 附件区 key → {photos:[], docs:[]}
 
   function newRequestId_() {
     try {
@@ -8266,10 +8943,6 @@ const SQProfile = (function () {
     const content = input ? String(input.value || '').trim() : '';
     const type = typeEl && typeEl.value ? String(typeEl.value) : '沟通';
 
-    busy = true;
-    const btn = document.getElementById('sqProfileSubmit');
-    if (btn) { btn.disabled = true; btn.textContent = isCreate ? '创建中…' : '提交中…'; }
-
     const params = {
       projNo: projNo,
       username: session.username,
@@ -8278,14 +8951,57 @@ const SQProfile = (function () {
       type: type,
       clientRequestId: newRequestId_()
     };
+
+    // 快捷回复（可多选）
+    const replyChips = readChipSet_('sqProfileReplies');
+    if (replyChips.length) params.replyChips = JSON.stringify(replyChips);
+
+    // 照片 / 文件（可多选）
+    if (pendingPhotos.length) {
+      params.photos = JSON.stringify(pendingPhotos.map(function (p) {
+        return { name: p.name, data: p.data };
+      }));
+    }
+    if (pendingDocs.length) {
+      params.docs = JSON.stringify(pendingDocs.map(function (p) {
+        return { name: p.name, data: p.data };
+      }));
+    }
+    // ⚠ 类型 =「确认」时后端强卡必须有签字件 → 把附件名报上去
+    const evNames = pendingPhotos.concat(pendingDocs).map(function (p) { return p.name; });
+    if (evNames.length) params.evidenceNames = evNames.join(',');
+
     if (isCreate) {
-      // 从报价建档 → 后端顺手导入客户资料 + 初始画像
-      params.standalone = 'false';
-      params.quoteOwner = (typeof currentUser !== 'undefined' && currentUser && currentUser.displayName) || '';
+      // ⚠⚠ 2026-11-08 修两个真 bug：
+      //   ① 以前传 `standalone: 'false'` —— 但**字符串 'false' 是真值**！
+      //      后端 `if (p.standalone)` 会走「独立建单」分支 → **不会**从报价导入
+      //      客户资料和初始画像（档案会是空的）。所以这里**根本不传** standalone。
+      //   ② quoteOwner 要的是**员工号**（Drive 文件夹名），不是显示名。
+      //      传显示名 → 快路径查不到 → 退化成全量扫 14 个文件夹（很慢）。
+      params.quoteOwner = (typeof currentUser !== 'undefined' && currentUser && currentUser.username) ||
+                          session.username;
+
+      // 客户画像三块
+      const chips = readChipSet_('sqProfileChips');
+      const prefs = readChipSet_('sqProfilePrefs');
+      const noteEl = document.getElementById('sqProfileNote');
+      const note = noteEl ? String(noteEl.value || '').trim() : '';
+      const prof = profilePayload_(chips, prefs, note);
+      if (prof) params.profile = prof;
+
+      // 参与协作的部门与人员
+      const people = peoplePayload_(readChipSet_('sqProfileDepts'), readChipSet_('sqProfileUsers'));
+      if (people.participantDepts) params.participantDepts = people.participantDepts;
+      if (people.participants) params.participants = people.participants;
     }
 
+    busy = true;
+    const btn = document.getElementById('sqProfileSubmit');
+    if (btn) { btn.disabled = true; btn.textContent = isCreate ? '创建中…' : '提交中…'; }
+
     try {
-      const r = await ofApi('submitInfo', params, 60000);
+      // ⚠ 带附件时要多给点时间（GAS 收 base64 + 存 Drive 慢）
+      const r = await ofApi('submitInfo', params, pendingPhotos.length || pendingDocs.length ? 120000 : 60000);
       busy = false;
       if (r && r.order) {
         state_arch = r.order;
@@ -8383,7 +9099,16 @@ const SQProfile = (function () {
     _ofApi: ofApi,
     _readSession: readSession,
     _writeSession: writeSession,
-    _loginErrorText_: loginErrorText_
+    _loginErrorText_: loginErrorText_,
+    // 2026-11-08 新增（表单 / 附件）
+    _composeHtml: composeHtml,
+    _chipSetHtml_: chipSetHtml_,
+    _peopleHtml_: peopleHtml_,
+    _fileIdOf_: fileIdOf_,
+    _profilePayload_: profilePayload_,
+    _peoplePayload_: peoplePayload_,
+    _setPending_: function (ph, dc) { pendingPhotos = ph || []; pendingDocs = dc || []; },
+    _getPending_: function () { return { photos: pendingPhotos, docs: pendingDocs }; }
   };
 })();
 
